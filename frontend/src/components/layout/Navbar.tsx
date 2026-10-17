@@ -103,8 +103,8 @@ export function Navbar({ fluid = false }: NavbarProps = {}) {
                 className="flex items-center gap-2 px-2"
                 onClick={() => setMobileOpen(false)}
               >
-                <img src="/logo.png" alt="OpenAlgo" className="h-8 w-8" />
-                <span className="font-semibold">OpenAlgo</span>
+                <img src="/images/domainxpert-trade.png" alt="DomainXpert Trade" className="h-8 w-auto max-w-[180px] object-contain rounded bg-white px-1" />
+                
               </Link>
 
               {/* Secondary nav items (not in bottom nav) */}
@@ -190,8 +190,8 @@ export function Navbar({ fluid = false }: NavbarProps = {}) {
 
         {/* Logo */}
         <Link to="/dashboard" className="flex items-center gap-2 mr-6">
-          <img src="/logo.png" alt="OpenAlgo" className="h-8 w-8" />
-          <span className="hidden font-semibold sm:inline-block">OpenAlgo</span>
+          <img src="/images/domainxpert-trade.png" alt="DomainXpert Trade" className="h-8 w-auto max-w-[180px] object-contain rounded bg-white px-1" />
+          
         </Link>
 
         {/* Desktop Navigation: text tabs, the current page underlined on the
