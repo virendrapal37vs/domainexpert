@@ -212,6 +212,11 @@ def start_execution_engine(engine_type: str = None):
             if os.getenv("SANDBOX_ENGINE_TYPE"):
                 logger.info(f"Sandbox engine type forced by env: {engine_type}")
 
+        from utils.sandbox_quote_owner import scoped_quotes_enabled
+        if scoped_quotes_enabled():
+            engine_type = "polling"
+            _auto_upgrade_enabled = False
+
         logger.debug(f"Starting execution engine with type: {engine_type}")
 
         try:

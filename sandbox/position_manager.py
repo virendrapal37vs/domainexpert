@@ -31,6 +31,7 @@ from sandbox.position_locks import holds_position_lock, position_lock  # noqa: F
 from sandbox.session_boundary import IST, last_session_expiry_utc
 from services.market_data_service import get_market_data_service
 from services.quotes_service import get_multiquotes, get_quotes
+from utils.sandbox_quote_owner import quote_api_key, scoped_quotes_enabled
 from utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -923,7 +924,7 @@ class PositionManager:
         """
         quote_cache = {}
 
-        if not symbols_list:
+        if not symbols_list or scoped_quotes_enabled():
             return quote_cache
 
         try:
@@ -958,17 +959,9 @@ class PositionManager:
     def _fetch_quote(self, symbol, exchange):
         """Fetch real-time quote for a symbol using API key"""
         try:
-            # Get any user's API key for fetching quotes
-            from database.auth_db import ApiKeys, decrypt_token
-
-            api_key_obj = ApiKeys.query.first()
-
-            if not api_key_obj:
-                logger.warning("No API keys found for fetching quotes")
+            api_key = quote_api_key(self.user_id)
+            if not api_key:
                 return None
-
-            # Decrypt the API key
-            api_key = decrypt_token(api_key_obj.api_key_encrypted)
 
             # Use quotes service with API key authentication
             success, response, status_code = get_quotes(
@@ -999,17 +992,9 @@ class PositionManager:
             return quote_cache
 
         try:
-            # Get any user's API key for fetching quotes
-            from database.auth_db import ApiKeys, decrypt_token
-
-            api_key_obj = ApiKeys.query.first()
-
-            if not api_key_obj:
-                logger.debug("No API keys found for fetching multiquotes")
+            api_key = quote_api_key(self.user_id)
+            if not api_key:
                 return quote_cache
-
-            # Decrypt the API key
-            api_key = decrypt_token(api_key_obj.api_key_encrypted)
 
             # Prepare symbols list for multiquotes API
             symbols_payload = [

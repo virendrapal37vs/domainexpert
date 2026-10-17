@@ -89,6 +89,9 @@ class WebSocketExecutionEngine:
 
     def start(self):
         """Start the WebSocket execution engine"""
+        from utils.sandbox_quote_owner import scoped_quotes_enabled
+        if scoped_quotes_enabled():
+            raise RuntimeError("Per-account sandbox requires owner-scoped polling")
         if self._running:
             logger.debug("WebSocket execution engine already running")
             return
@@ -384,7 +387,8 @@ class WebSocketExecutionEngine:
         Callback when new market data arrives from WebSocket.
         Called immediately when LTP updates are received.
         """
-        if not self._running:
+        from utils.sandbox_quote_owner import scoped_quotes_enabled
+        if scoped_quotes_enabled() or not self._running:
             return
 
         try:
@@ -776,6 +780,9 @@ def peek_websocket_execution_engine() -> WebSocketExecutionEngine | None:
 
 def start_websocket_execution_engine():
     """Start the WebSocket execution engine"""
+    from utils.sandbox_quote_owner import scoped_quotes_enabled
+    if scoped_quotes_enabled():
+        return False, "Per-account sandbox requires owner-scoped polling"
     engine = get_websocket_execution_engine()
     engine.start()
     return True, "WebSocket execution engine started"

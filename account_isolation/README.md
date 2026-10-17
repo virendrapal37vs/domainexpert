@@ -195,3 +195,17 @@ tests include the real extracted polling-cycle and quote-fetch method bodies;
 no live broker request is made. Engine/manager modules also pass Python compile.
 Keep account mode flag off: this does not finish WebSocket price-cache isolation,
 all background mode call sites, or full live order dispatch validation.
+
+### Shared sandbox WebSocket cache guard
+
+Per-user Groww mode now forces polling sandbox execution, disables automatic
+WebSocket upgrade, rejects direct WebSocket-engine startup, and ignores its
+ownerless tick callback. Position MTM bypasses shared MarketDataService cache.
+Position and holdings single/batch REST quotes resolve only self.user_id's API
+key. Six mocked/source-method tests cover tick rejection, polling selection,
+cache bypass and own-key REST access. Modules pass compile checks. This trades
+sandbox tick latency for polling latency until owner-aware tick dispatch exists;
+it is not a completed per-user WebSocket engine. Keep account mode flag off:
+background mode callers, live order paths and account-wide isolation still need
+integration verification. Existing processes must restart to load these changes;
+do not toggle environment flags in a running process.

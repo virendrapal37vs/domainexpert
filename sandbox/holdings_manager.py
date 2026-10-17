@@ -23,6 +23,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.sandbox_db import SandboxHoldings, SandboxPositions, db_session
 from services.quotes_service import get_multiquotes, get_quotes
+from utils.sandbox_quote_owner import quote_api_key
 from utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -326,12 +327,8 @@ class HoldingsManager:
             # Fetch all quotes in a single batch call using multiquotes
             quote_cache = {}
             try:
-                # Get any user's API key for fetching quotes
-                from database.auth_db import ApiKeys, decrypt_token
-
-                api_key_obj = ApiKeys.query.first()
-                if api_key_obj:
-                    api_key = decrypt_token(api_key_obj.api_key_encrypted)
+                api_key = quote_api_key(self.user_id)
+                if api_key:
                     success, response, status_code = get_multiquotes(
                         symbols=symbols_to_fetch, api_key=api_key
                     )
@@ -408,17 +405,9 @@ class HoldingsManager:
     def _fetch_quote(self, symbol, exchange):
         """Fetch real-time quote for a symbol using API key"""
         try:
-            # Get any user's API key for fetching quotes
-            from database.auth_db import ApiKeys, decrypt_token
-
-            api_key_obj = ApiKeys.query.first()
-
-            if not api_key_obj:
-                logger.warning("No API keys found for fetching quotes")
+            api_key = quote_api_key(self.user_id)
+            if not api_key:
                 return None
-
-            # Decrypt the API key
-            api_key = decrypt_token(api_key_obj.api_key_encrypted)
 
             # Use quotes service with API key authentication
             success, response, status_code = get_quotes(
