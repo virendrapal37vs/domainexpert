@@ -84,3 +84,27 @@ Do not run the full app on this development worktree until that setup is prepare
 - Groww access still needs a live check after the outstanding 403 is resolved.
 
 Do not merge this feature branch into the production deployment yet.
+
+## Restricted main-app staging guard
+
+`DOMAINXPERT_STAGING_SAFE=true` is an onboarding-only staging mode. It validates
+loopback ports, dedicated database file paths, distinct cookies, empty global
+broker keys, and disabled ngrok/debug/MCP/order updates. It selects the already
+built `frontend/dist-account-staging` directory.
+
+Only reviewed setup/login/session/static/own-credential endpoints are admitted.
+Broker callbacks, trading APIs, strategies and admin APIs return 403. Socket.IO
+and `/ws` are also blocked at the WSGI middleware layer. Boot skips broker
+keepalive, order adapters, health-monitor startup, cache restoration, websocket
+proxy startup and scheduler/bot/strategy initialization after database creation.
+Normal production startup is unchanged when the flag is absent.
+
+Use `account_isolation/start_staging.py` with a **separate full-app venv**. The
+preview/test venv does not contain the full app dependencies. The launcher refuses
+to start without the staging flag and a valid config, uses one gthread worker,
+binds to 127.0.0.1:5001, and does not use the websocket proxy launcher.
+
+Guard tests validate bad configs, endpoint denial, the outer websocket gate, and
+startup call guards. Full-app staging startup is still to be verified on the server.
+This does not make shared trading or arbitrary Python execution tenant-safe.
+Do not enable broker connections or invite outside users from this staging mode.

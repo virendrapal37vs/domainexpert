@@ -124,11 +124,13 @@ def get_broker_config():
     from database.account_broker_db import per_user_groww_enabled, has_groww_credentials
     if per_user_groww_enabled():
         from utils.account_access import current_account
+        from utils.staging_mode import staging_safe
         if current_account() is None:
             return jsonify(status="error", message="Sign in first"), 401
         return jsonify(status="success", broker_name="groww", broker_api_key="",
                        redirect_url="", per_user_credentials=True,
-                       credentials_configured=has_groww_credentials(session["user"]))
+                       credentials_configured=has_groww_credentials(session["user"]),
+                       staging_restricted=staging_safe())
 
     REDIRECT_URL = os.getenv("REDIRECT_URL")
 

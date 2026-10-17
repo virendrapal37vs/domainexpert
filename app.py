@@ -3,6 +3,10 @@ from utils.env_check import load_and_check_env_variables  # Import the environme
 
 load_and_check_env_variables()
 
+from utils.staging_mode import staging_safe, validate_staging_config, install_staging_gate, install_staging_socket_gate
+from pathlib import Path as _StagingPath
+validate_staging_config(_StagingPath(__file__).resolve().parent)
+
 import os
 import re
 import sys
@@ -170,9 +174,11 @@ logger = get_logger(__name__)
 def create_app():
     # Initialize Flask application
     app = Flask(__name__)
+    install_staging_gate(app)
 
     # Initialize SocketIO
     socketio.init_app(app)  # Link SocketIO to the Flask app
+    install_staging_socket_gate(app)
 
     # Initialize EventBus subscribers
     from subscribers import register_all as register_event_subscribers
@@ -475,11 +481,13 @@ def create_app():
         init_latency_monitoring(app)
 
         # Initialize health monitoring (background daemon thread)
-        init_health_monitoring(app)
+        if not staging_safe():
+            init_health_monitoring(app)
 
         # Keep the pooled broker HTTP connection warm during market hours so
         # orders never pay a fresh TCP+TLS handshake after an idle gap
-        start_broker_keepalive()
+        if not staging_safe():
+            start_broker_keepalive()
 
         # Signal for "background DB table creation has finished". Created here
         # rather than in setup_environment() because the order-update boot
@@ -497,7 +505,8 @@ def create_app():
         # touching the auth table.
         from services.order_update_service import start_order_update_adapters_on_boot
 
-        start_order_update_adapters_on_boot(db_ready=app.db_ready)
+        if not staging_safe():
+            start_order_update_adapters_on_boot(db_ready=app.db_ready)
 
         # NOTE: Python strategy scheduler is initialized in setup_environment()
         # AFTER database tables are created, to avoid "no such table" errors on fresh install
@@ -806,6 +815,11 @@ def setup_environment(app):
             db_init_time = (time.time() - db_init_start) * 1000
             logger.debug(f"All databases initialized ({db_init_time:.0f}ms)")
 
+            if staging_safe():
+                app.db_ready.set()
+                logger.info("Restricted staging ready: schedulers, broker adapters and bots are disabled")
+                return
+
             # The strategy book must be listening before any order can be
             # accepted: order.placed carries the only copy of the strategy tag,
             # so an order placed before this registration loses its attribution
@@ -1035,7 +1049,8 @@ setup_environment(app)
 # gthread worker and the dev server, where nothing needs marshalling.
 from utils.real_threading import start_hub_worker
 
-start_hub_worker()
+if not staging_safe():
+    start_hub_worker()
 
 # Restore caches from database in background (not needed until first trade/lookup)
 import threading
@@ -1061,7 +1076,8 @@ def _restore_caches_background():
             logger.debug(f"Cache restoration skipped: {e}")
 
 
-threading.Thread(target=_restore_caches_background, daemon=True).start()
+if not staging_safe():
+    threading.Thread(target=_restore_caches_background, daemon=True).start()
 
 
 # Database session cleanup (teardown handler)
@@ -1086,7 +1102,8 @@ def shutdown_database_sessions(exception=None):
 # nothing here under Docker, where start.sh runs it. Under eventlet that is
 # exactly what this block used to decide itself.
 logger.debug("Starting WebSocket proxy")
-start_websocket_proxy(app)
+if not staging_safe():
+    start_websocket_proxy(app)
 
 # Under the gthread worker, end Socket.IO sessions as soon as gunicorn starts
 # its graceful stop: each open session holds a worker thread, and a thread
@@ -1094,7 +1111,8 @@ start_websocket_proxy(app)
 # eventlet and on the dev server.
 from utils.shutdown import start_drain_watcher
 
-start_drain_watcher()
+if not staging_safe():
+    start_drain_watcher()
 
 # Start Flask development server with SocketIO support if directly executed
 if __name__ == "__main__":

@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-export function OwnGrowwCredentials({ configured, onSaved }: {
+export function OwnGrowwCredentials({ configured, onSaved, connectionBlocked = false }: {
   configured: boolean
+  connectionBlocked?: boolean
   onSaved: () => void
 }) {
   const [key, setKey] = useState('')
@@ -30,7 +31,7 @@ export function OwnGrowwCredentials({ configured, onSaved }: {
       }
       setKey('')
       setSecret('')
-      setMessage('Your Groww credentials are saved. You can connect below.')
+      setMessage(connectionBlocked ? 'Your Groww credentials are saved. Connection is disabled in staging.' : 'Your Groww credentials are saved. You can connect below.')
       onSaved()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not save your credentials')

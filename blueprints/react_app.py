@@ -50,7 +50,8 @@ def _accepts_encoding(header: str, encoding: str) -> bool:
     return False
 
 # Path to the pre-built React frontend
-FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+from utils.staging_mode import staging_safe
+FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / ("dist-account-staging" if staging_safe() else "dist")
 
 
 def _configured_brokers():
