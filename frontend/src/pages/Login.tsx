@@ -381,7 +381,7 @@ export default function Login() {
               <Info className="h-4 w-4" />
               <AlertTitle>First Time User?</AlertTitle>
               <AlertDescription>
-                Contact your administrator to set up your account.
+                <Link to="/signup" className="text-primary underline">Create your account — Sign up</Link>
               </AlertDescription>
             </Alert>
 

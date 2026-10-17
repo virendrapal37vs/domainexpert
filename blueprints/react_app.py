@@ -118,6 +118,11 @@ def react_login():
     return serve_react_app()
 
 
+@react_bp.route("/signup")
+def react_signup():
+    return serve_react_app()
+
+
 # Setup route (initial admin setup)
 @react_bp.route("/setup")
 def react_setup():

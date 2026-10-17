@@ -44,7 +44,7 @@ def validate_staging_config(root):
 
 
 STAGING_ENDPOINTS = frozenset({
-    "react.react_index", "react.react_login", "react.react_setup", "react.react_broker",
+    "account_signup.signup", "react.react_signup", "react.react_index", "react.react_login", "react.react_setup", "react.react_broker",
     "react.serve_assets", "react.serve_favicon", "react.serve_logo",
     "react.serve_apple_touch_icon", "react.serve_images",
     "auth.login", "auth.login_totp", "auth.logout", "auth.get_csrf_token",

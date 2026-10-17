@@ -108,3 +108,14 @@ Guard tests validate bad configs, endpoint denial, the outer websocket gate, and
 startup call guards. Full-app staging startup is still to be verified on the server.
 This does not make shared trading or arbitrary Python execution tenant-safe.
 Do not enable broker connections or invite outside users from this staging mode.
+
+### Direct signup
+
+Set `DOMAINXPERT_PUBLIC_SIGNUP=true` in the separate staging `.env` to enable
+`/signup` and POST `/auth/signup`. Complete initial administrator setup first.
+New accounts always have `is_admin=False`, use the existing password hashing
+and encrypted TOTP storage, and then sign in through the existing login flow.
+The endpoint uses global CSRF protection and a five-per-hour IP limit. Current
+limiter storage must be shared before scaling to multiple workers/instances.
+Email syntax is validated; email ownership verification is not implemented.
+Restricted staging continues to block broker connections and trading.

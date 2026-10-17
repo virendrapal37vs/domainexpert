@@ -18,6 +18,7 @@ const SipBacktesterResults = lazy(() => import('@/pages/SipBacktesterResults'))
 const PortfolioAnalyzer = lazy(() => import('@/pages/PortfolioAnalyzer'))
 const Faq = lazy(() => import('@/pages/Faq'))
 const Setup = lazy(() => import('@/pages/Setup'))
+const Signup = lazy(() => import('@/pages/Signup'))
 const Login = lazy(() => import('@/pages/Login'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'))
 const Download = lazy(() => import('@/pages/Download'))
@@ -171,6 +172,7 @@ function App() {
               <Route path="/faq" element={<Faq />} />
               <Route path="/setup" element={<Setup />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/download" element={<Download />} />
               <Route path="/error" element={<ServerError />} />

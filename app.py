@@ -359,6 +359,8 @@ def create_app():
     if per_user_groww_enabled():
         init_account_broker_db()
     app.register_blueprint(account_broker_bp)
+    from blueprints.account_signup import signup_bp
+    app.register_blueprint(signup_bp)
     app.register_blueprint(system_permissions_bp)  # Register System permissions blueprint
     app.register_blueprint(strategy_portfolio_bp)  # Register Strategy Portfolio blueprint
     app.register_blueprint(postback_bp)  # Register broker postback (order-update webhook) blueprint
