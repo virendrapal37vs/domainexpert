@@ -157,3 +157,16 @@ mode UI, order dispatch or sandbox lifecycle is wired to this module yet.
 These storage tests do not establish that live orders honor per-account mode.
 Next migration must cover service calls, API/session owner resolution, explicit
 strategy-run mode and shared sandbox engine lifecycle before enabling trading.
+
+### Mode owner resolution (disabled migration flag)
+
+`DOMAINXPERT_ACCOUNT_MODES` defaults to false. Do not enable yet. When enabled,
+settings_db.get_analyze_mode resolves an explicit owner/API key, otherwise a
+request JSON apikey or browser session. API routes cannot borrow browser identity;
+unknown owners and ownerless background calls raise instead of using global Live.
+The per-account table is now created alongside per-user Groww credentials at boot.
+Shared set_analyze_mode and apply_analyze_mode reject this migration mode before
+writing settings or starting/stopping shared sandbox machinery. Lifecycle and
+explicit owner propagation across background services remain incomplete. Current
+staging behavior is unchanged while this flag remains false. Six resolver tests
+cover session/API precedence, rejected fallback and explicit background identity.

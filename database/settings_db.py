@@ -85,8 +85,11 @@ def init_db():
         logger.debug(f"Settings DB: Default config may already exist (race condition): {e}")
 
 
-def get_analyze_mode():
+def get_analyze_mode(*, username=None, api_key=None):
     """Get current analyze mode setting (cached for 1 hour)"""
+    from utils.account_mode_context import account_modes_enabled, read_account_mode
+    if account_modes_enabled():
+        return read_account_mode(username=username, api_key=api_key)
     cache_key = "analyze_mode"
 
     # Check cache first. One get, never a membership test then a subscript:
@@ -112,6 +115,9 @@ def get_analyze_mode():
 
 def set_analyze_mode(mode: bool):
     """Set analyze mode setting"""
+    from utils.account_mode_context import account_modes_enabled
+    if account_modes_enabled():
+        raise RuntimeError("Account mode changes require the per-account sandbox lifecycle migration")
     settings = Settings.query.first()
     if not settings:
         settings = Settings(analyze_mode=mode)

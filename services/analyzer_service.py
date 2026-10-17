@@ -141,6 +141,9 @@ def apply_analyze_mode(
         LockBusy: Under gthread, another change is still in progress.
         Exception: Whatever writing the mode raised, after the reconcile.
     """
+    from utils.account_mode_context import account_modes_enabled
+    if account_modes_enabled():
+        raise RuntimeError("Shared sandbox lifecycle is disabled in account-mode migration")
     with mode_transition(timeout):
         if toggle:
             new_mode = not get_analyze_mode()

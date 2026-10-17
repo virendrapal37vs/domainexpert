@@ -358,6 +358,8 @@ def create_app():
     from database.account_broker_db import init_account_broker_db, per_user_groww_enabled
     if per_user_groww_enabled():
         init_account_broker_db()
+        from database.account_mode_db import init_account_mode_db
+        init_account_mode_db()
     app.register_blueprint(account_broker_bp)
     from blueprints.account_signup import signup_bp
     app.register_blueprint(signup_bp)
