@@ -10,7 +10,7 @@ import pytz
 from flask import Blueprint, Response, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy import func
 
-from database.apilog_db import OrderLog
+from database.apilog_db import OrderLog, account_order_log_query
 from utils.logging import get_logger
 from utils.session import check_session_validity
 
@@ -80,7 +80,7 @@ def format_log_entry(log, ist):
 def get_filtered_logs(start_date=None, end_date=None, search_query=None, page=None, per_page=None):
     """Get filtered logs with pagination"""
     ist = pytz.timezone("Asia/Kolkata")
-    query = OrderLog.query
+    query = account_order_log_query()
 
     try:
         # Apply date filters if provided

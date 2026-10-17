@@ -264,3 +264,17 @@ Nine tests execute the real monitor guard methods and Flask route gate, includin
 legacy route availability. This is an explicit feature block, not a multi-user
 scalping implementation. Restart staging to load it; do not alter running flags.
 Other background runners and general API logs remain under audit.
+
+### General API log ownership
+
+OrderLog has a nullable username column with an additive initialization migration.
+Event subscribers pass their API key; direct writers may also supply an explicit
+key or request payload apikey. Ownership is verified, never taken from payload
+username. New top-level request apikey fields are removed before persistence.
+Log list/search/pagination/export share the owner-filtered query; unowned rows
+remain hidden in per-user mode. Existing logs are not re-attributed or redacted.
+Four SQLite tests cover event/direct ownership, missing/invalid owner rejection,
+nonmutation/redaction, legacy visibility and migration preservation. This does
+not claim all direct writer call sites now propagate identity; logs whose callers
+omit the key remain unowned. Backup staging DB before restart to apply migration.
+Full HTTP export and background strategy execution are still pending verification.

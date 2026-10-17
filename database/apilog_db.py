@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 import pytz
-from sqlalchemy import Column, DateTime, Integer, Text, create_engine
+from sqlalchemy import Column, DateTime, Integer, Text, String, create_engine, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import NullPool
@@ -37,6 +37,7 @@ Base.query = db_session.query_property()
 class OrderLog(Base):
     __tablename__ = "order_logs"
     id = Column(Integer, primary_key=True)
+    username = Column(String(80), nullable=True)
     api_type = Column(Text, nullable=False)
     request_data = Column(Text, nullable=False)
     response_data = Column(Text, nullable=False)
@@ -52,13 +53,14 @@ def init_db():
     from database.db_init_helper import init_db_with_logging
 
     init_db_with_logging(Base, engine, "API Log DB", logger)
+    ensure_order_log_owner_column(engine)
 
 
 # Executor for asynchronous tasks
 executor = ThreadPoolExecutor(10)  # Increased from 2 to 10 for better concurrency
 
 
-def async_log_order(api_type, request_data, response_data):
+def async_log_order(api_type, request_data, response_data, api_key=None):
     """Persist an API order log entry to the database.
 
     Note: Despite its name, this function executes **synchronously**.
@@ -81,8 +83,16 @@ def async_log_order(api_type, request_data, response_data):
         response_data: Dictionary of the broker/service response.
     """
     try:
-        # Serialize JSON data for storage
-        request_json = json.dumps(request_data)
+        username = None
+        candidate_key = api_key or (request_data.get("apikey") if isinstance(request_data, dict) else None)
+        if candidate_key:
+            from database.auth_db import verify_api_key
+            username = verify_api_key(candidate_key)
+        # Never persist the OpenAlgo API key inside new request log payloads.
+        safe_request = dict(request_data) if isinstance(request_data, dict) else request_data
+        if isinstance(safe_request, dict):
+            safe_request.pop("apikey", None)
+        request_json = json.dumps(safe_request)
         response_json = json.dumps(response_data)
 
         # Get current time in IST
@@ -90,6 +100,7 @@ def async_log_order(api_type, request_data, response_data):
         now_ist = datetime.now(ist)
 
         order_log = OrderLog(
+            username=username,
             api_type=api_type,
             request_data=request_json,
             response_data=response_json,
@@ -99,5 +110,23 @@ def async_log_order(api_type, request_data, response_data):
         db_session.commit()
     except Exception as e:
         logger.exception(f"Error saving order log: {e}")
+        db_session.rollback()
     finally:
         db_session.remove()
+
+
+def ensure_order_log_owner_column(target_engine):
+    columns = {column['name'] for column in inspect(target_engine).get_columns('order_logs')}
+    if 'username' not in columns:
+        with target_engine.begin() as connection:
+            connection.execute(text('ALTER TABLE order_logs ADD COLUMN username VARCHAR(80)'))
+
+
+def account_order_log_query(*, username=None, api_key=None):
+    from database.account_broker_db import per_user_groww_enabled
+    query = db_session.query(OrderLog)
+    if per_user_groww_enabled():
+        from utils.account_mode_context import resolve_mode_owner
+        owner = resolve_mode_owner(username=username, api_key=api_key)
+        return query.filter(OrderLog.username == owner)
+    return query

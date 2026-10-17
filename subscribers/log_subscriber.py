@@ -21,7 +21,7 @@ def _log_event(event):
     if event.mode == "analyze":
         async_log_analyzer(event.request_data, event.response_data, event.api_type, api_key=event.api_key)
     else:
-        async_log_order(event.api_type, event.request_data, event.response_data)
+        async_log_order(event.api_type, event.request_data, event.response_data, api_key=event.api_key)
 
 
 # All handlers delegate to _log_event — the EventBus thread pool provides isolation
