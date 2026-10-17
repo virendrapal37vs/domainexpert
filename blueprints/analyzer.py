@@ -18,7 +18,7 @@ from flask import (
 )
 from sqlalchemy import desc, func
 
-from database.analyzer_db import AnalyzerLog, db_session
+from database.analyzer_db import AnalyzerLog, db_session, account_analyzer_query
 from utils.api_analyzer import get_analyzer_stats
 from utils.logging import get_logger
 from utils.session import check_session_validity
@@ -82,7 +82,7 @@ def get_recent_requests():
     """Get recent analyzer requests"""
     try:
         ist = pytz.timezone("Asia/Kolkata")
-        recent = AnalyzerLog.query.order_by(AnalyzerLog.created_at.desc()).limit(100).all()
+        recent = account_analyzer_query().order_by(AnalyzerLog.created_at.desc()).limit(100).all()
         requests = []
 
         for req in recent:
@@ -100,7 +100,7 @@ def get_filtered_requests(start_date=None, end_date=None):
     """Get analyzer requests with date filtering"""
     try:
         ist = pytz.timezone("Asia/Kolkata")
-        query = AnalyzerLog.query
+        query = account_analyzer_query()
 
         # Apply date filters if provided
         if start_date:
@@ -321,7 +321,7 @@ def clear_logs():
     try:
         # Delete all logs older than 24 hours
         cutoff = datetime.now(pytz.UTC) - timedelta(hours=24)
-        AnalyzerLog.query.filter(AnalyzerLog.created_at < cutoff).delete()
+        account_analyzer_query().filter(AnalyzerLog.created_at < cutoff).delete()
         db_session.commit()
         flash("Analyzer logs cleared successfully", "success")
     except Exception as e:

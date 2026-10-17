@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, Dict, Optional, Tuple
 
-from database.analyzer_db import AnalyzerLog, db_session
+from database.analyzer_db import AnalyzerLog, db_session, account_analyzer_query
 from database.apilog_db import async_log_order
 from database.apilog_db import executor as log_executor
 from database.auth_db import get_auth_token_broker
@@ -182,10 +182,11 @@ def get_analyzer_status_with_auth(
 
     try:
         # Get current analyzer mode
-        current_mode = get_analyze_mode()
+        from utils.service_mode import service_analyze_mode
+        current_mode = service_analyze_mode(api_key=original_data.get("apikey"))
 
         # Get analyzer logs count
-        logs_count = db_session.query(AnalyzerLog).count()
+        logs_count = account_analyzer_query(api_key=original_data.get("apikey")).count()
 
         response_data = {
             "status": "success",
@@ -242,7 +243,7 @@ def toggle_analyzer_mode_with_auth(
             return False, busy_response, 409
 
         # Get logs count for response
-        logs_count = db_session.query(AnalyzerLog).count()
+        logs_count = account_analyzer_query(api_key=original_data.get("apikey")).count()
 
         response_data = {
             "status": "success",

@@ -235,3 +235,20 @@ these are not complete execution/fill tests. All 18 modified modules compile.
 Keep account-mode flag off: runner/bot ownership, analyzer log access, remaining
 lifecycle paths and full-app integration are not complete. A passing synthetic
 suite is not authorization to enable public trading.
+
+### Analyzer log ownership
+
+Analyzer logs now have a nullable username column with an additive migration on
+init_db. Existing rows remain unowned. Order-event log subscribers supply the
+API key so the writer verifies and stores the owner. Per-user list/filter/export,
+stats and clear queries are scoped through account_analyzer_query; API status
+counts use the API key owner. Unknown identities reject access and ownerless
+legacy logs are hidden in per-user mode. Legacy mode keeps existing visibility.
+Five SQLite tests cover own query/count, isolated deletion, invalid key, legacy
+visibility and idempotent additive migration. Non-event direct logging call sites
+without an API key still write unowned rows, hidden from per-user views; their
+owner propagation remains unfinished. This does not migrate general API logs or
+complete full-app browser/export tests. Existing DB files should be backed up
+before loading this schema migration on server. No production restart is needed.
+Background audit: ScalpingRiskMonitor still resolves find_user_by_username()
+without an owner (first user); do not enable multi-user trading yet.

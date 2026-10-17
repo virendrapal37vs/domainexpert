@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 def _log_event(event):
     """Route to the correct logging function based on mode."""
     if event.mode == "analyze":
-        async_log_analyzer(event.request_data, event.response_data, event.api_type)
+        async_log_analyzer(event.request_data, event.response_data, event.api_type, api_key=event.api_key)
     else:
         async_log_order(event.api_type, event.request_data, event.response_data)
 

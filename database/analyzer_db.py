@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 import pytz
-from sqlalchemy import Column, DateTime, Index, Integer, String, Text, create_engine
+from sqlalchemy import Column, DateTime, Index, Integer, String, Text, create_engine, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import NullPool
@@ -36,6 +36,7 @@ Base.query = db_session.query_property()
 class AnalyzerLog(Base):
     __tablename__ = "analyzer_logs"
     id = Column(Integer, primary_key=True)
+    username = Column(String(80), nullable=True)
     api_type = Column(String(50), nullable=False)  # placeorder, cancelorder, etc.
     request_data = Column(Text, nullable=False)
     response_data = Column(Text, nullable=False)
@@ -83,13 +84,14 @@ def init_db():
     from database.db_init_helper import init_db_with_logging
 
     init_db_with_logging(Base, engine, "Analyzer DB", logger)
+    ensure_log_owner_column(engine)
 
 
 # Executor for asynchronous tasks
 executor = ThreadPoolExecutor(10)  # Increased from 2 to 10 for better concurrency
 
 
-def async_log_analyzer(request_data, response_data, api_type="placeorder"):
+def async_log_analyzer(request_data, response_data, api_type="placeorder", api_key=None):
     """Asynchronously log analyzer request"""
     try:
         # Serialize JSON data for storage
@@ -100,7 +102,12 @@ def async_log_analyzer(request_data, response_data, api_type="placeorder"):
         ist = pytz.timezone("Asia/Kolkata")
         now_ist = datetime.now(ist)
 
+        username = None
+        if api_key:
+            from database.auth_db import verify_api_key
+            username = verify_api_key(api_key)
         analyzer_log = AnalyzerLog(
+            username=username,
             api_type=api_type,
             request_data=request_json,
             response_data=response_json,
@@ -113,3 +120,21 @@ def async_log_analyzer(request_data, response_data, api_type="placeorder"):
         db_session.rollback()
     finally:
         db_session.remove()
+
+
+def ensure_log_owner_column(target_engine):
+    """Additive migration; old logs stay ownerless rather than guessing owners."""
+    columns = {column['name'] for column in inspect(target_engine).get_columns('analyzer_logs')}
+    if 'username' not in columns:
+        with target_engine.begin() as connection:
+            connection.execute(text('ALTER TABLE analyzer_logs ADD COLUMN username VARCHAR(80)'))
+
+
+def account_analyzer_query(*, username=None, api_key=None):
+    from database.account_broker_db import per_user_groww_enabled
+    query = db_session.query(AnalyzerLog)
+    if per_user_groww_enabled():
+        from utils.account_mode_context import resolve_mode_owner
+        owner = resolve_mode_owner(username=username, api_key=api_key)
+        return query.filter(AnalyzerLog.username == owner)
+    return query

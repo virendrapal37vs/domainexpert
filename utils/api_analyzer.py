@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pytz
 from sqlalchemy import func
 
-from database.analyzer_db import AnalyzerLog, db_session
+from database.analyzer_db import AnalyzerLog, db_session, account_analyzer_query
 from database.symbol import SymToken
 from extensions import socketio
 from utils.constants import (
@@ -549,7 +549,7 @@ def get_analyzer_stats():
         cutoff = datetime.now(pytz.UTC) - timedelta(hours=24)
 
         # Get recent requests
-        recent_requests = AnalyzerLog.query.filter(AnalyzerLog.created_at >= cutoff).all()
+        recent_requests = account_analyzer_query().filter(AnalyzerLog.created_at >= cutoff).all()
 
         # Initialize stats
         stats = {
