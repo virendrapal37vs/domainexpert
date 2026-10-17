@@ -267,6 +267,9 @@ def start_run(
     webhook_event_id: int | None = None,
 ) -> StartResult:
     """Start a strategy, or explain why it did not start."""
+    from utils.strategy_account_guard import shared_strategy_disabled, STRATEGY_UNAVAILABLE
+    if shared_strategy_disabled():
+        return StartResult(ok=False, error=STRATEGY_UNAVAILABLE)
     strategy_row = store.get_strategy(strategy_id, user_id)
     if not strategy_row:
         return StartResult(ok=False, error="Strategy not found")

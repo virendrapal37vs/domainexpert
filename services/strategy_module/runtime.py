@@ -37,6 +37,10 @@ _started = False
 def start_strategy_module() -> dict[str, bool]:
     """Bring the module up. Idempotent. Returns what actually started."""
     global _started
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return {"order_events": False, "recovery": False, "tick_feed": False,
+                "checkpoint": False, "scheduler": False}
     if _started:
         return {}
     _started = True

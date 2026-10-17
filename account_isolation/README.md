@@ -290,3 +290,16 @@ a child. This does not certify script record ownership, stop/status permissions,
 child execution isolation or run restoration. Shared strategy RiskTickFeed still
 has a first-user API-key fallback and remains a blocker for public strategy use.
 Keep account modes disabled and restricted staging active.
+
+### Shared strategy risk-feed guard
+
+Reviewed strategy HTTP routes already resolve stored strategies by username, but
+RiskTickFeed uses a first-user key and ownerless symbol callbacks. Per-user flags
+therefore make the strategy blueprint return explicit 503, skip module runtime
+jobs/recovery, refuse direct engine.start_run and block shared feed key/WS/tick/
+price-callback paths. Legacy single-user behavior remains enabled. Seven tests
+exercise real method bodies and Flask gate with mocks; no strategy runs/orders
+are created. This is a temporary feature block, not account-aware strategy risk
+monitoring. Stop/status permissions of other runners, Python process isolation,
+Flow/bot lifecycle and full two-account HTTP behavior remain unfinished.
+Do not enable account modes or public trading. Restart staging to load guards.

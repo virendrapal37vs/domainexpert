@@ -524,6 +524,9 @@ class RiskTickFeed:
 
         A tick for a symbol nobody holds costs one set membership test.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return None
         if not isinstance(payload, dict):
             return
         symbol = payload.get("symbol")
@@ -977,6 +980,9 @@ class RiskTickFeed:
         good: get_websocket_client then hands out its replacement. A client
         without ``alive`` (a test double) falls back to ``connected``.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return None
         if self._ws is not None:
             alive = getattr(self._ws, "alive", None)
             if alive is None:
@@ -1047,6 +1053,9 @@ class RiskTickFeed:
         picked up without a restart. The session is removed explicitly: this
         runs on a background thread, where Flask's teardown never fires.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return None
         if self._api_key:
             return self._api_key
         if self._api_key_provider is not None:
@@ -1082,6 +1091,9 @@ class RiskTickFeed:
         would wait for the length of a broker call: behind a real thread under
         the gthread worker, behind a greenlet under eventlet.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return None
         if not prices:
             return
         callback = self._on_price

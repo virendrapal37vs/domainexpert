@@ -53,6 +53,14 @@ logger = get_logger(__name__)
 
 strategy_module_bp = Blueprint("strategy_module_bp", __name__, url_prefix="/strategy")
 
+@strategy_module_bp.before_request
+def require_account_safe_strategy():
+    from utils.strategy_account_guard import shared_strategy_disabled, STRATEGY_UNAVAILABLE
+    if shared_strategy_disabled():
+        return jsonify(status="error", code="STRATEGY_ACCOUNT_ISOLATION_PENDING",
+                       message=STRATEGY_UNAVAILABLE), 503
+
+
 # The same budget /chartink already applies to its session-authenticated
 # strategy pages. One knob an operator has configured, not a second one.
 STRATEGY_RATE_LIMIT = os.getenv("STRATEGY_RATE_LIMIT", "200 per minute")
