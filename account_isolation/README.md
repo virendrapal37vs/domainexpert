@@ -170,3 +170,16 @@ writing settings or starting/stopping shared sandbox machinery. Lifecycle and
 explicit owner propagation across background services remain incomplete. Current
 staging behavior is unchanged while this flag remains false. Six resolver tests
 cover session/API precedence, rejected fallback and explicit background identity.
+
+### Account mode sandbox lifecycle (still disabled)
+
+Account-mode transitions now use explicit owner resolution and the existing
+bounded transition lock. Worker startup precedes mode persistence; startup failure
+leaves the account's mode unchanged. Shared workers are never stopped by one
+account switching Live, because other accounts and pre-existing sandbox orders
+still need processing. Account-mode boot ensures workers without reading an
+ownerless global mode. Restricted staging blocks transitions/worker startup.
+Five tests use mocked workers; they are not broker execution tests.
+Keep DOMAINXPERT_ACCOUNT_MODES=false: polling execution_engine quote helpers
+still use ApiKeys.query.first(), and background owner propagation is unfinished.
+This patch does not establish multi-user sandbox/trading readiness.

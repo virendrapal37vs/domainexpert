@@ -966,7 +966,11 @@ def setup_environment(app):
             try:
                 from database.settings_db import get_analyze_mode
 
-                if get_analyze_mode():
+                from utils.account_mode_context import account_modes_enabled
+                if account_modes_enabled():
+                    from services.account_mode_service import ensure_account_sandbox
+                    ensure_account_sandbox()
+                elif get_analyze_mode():
                     from sandbox.execution_thread import start_execution_engine
                     from sandbox.squareoff_thread import start_squareoff_scheduler
 

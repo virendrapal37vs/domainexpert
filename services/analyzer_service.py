@@ -143,7 +143,8 @@ def apply_analyze_mode(
     """
     from utils.account_mode_context import account_modes_enabled
     if account_modes_enabled():
-        raise RuntimeError("Shared sandbox lifecycle is disabled in account-mode migration")
+        from services.account_mode_service import change_account_mode
+        return change_account_mode(new_mode, toggle=toggle)
     with mode_transition(timeout):
         if toggle:
             new_mode = not get_analyze_mode()
