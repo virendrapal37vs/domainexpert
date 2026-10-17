@@ -119,3 +119,14 @@ The endpoint uses global CSRF protection and a five-per-hour IP limit. Current
 limiter storage must be shared before scaling to multiple workers/instances.
 Email syntax is validated; email ownership verification is not implemented.
 Restricted staging continues to block broker connections and trading.
+
+### Order notification isolation (partial audit)
+
+With per-user Groww enabled, the order-event Socket.IO subscriber resolves the
+owner from the event API key and emits only to that account's hashed room.
+Missing/invalid ownership drops the event. Root connections require an existing
+broker-authenticated session and join only the session owner's room; auth payload
+usernames are ignored. Legacy mode is unchanged. Restricted staging still blocks
+all Socket.IO transport. Tests use synthetic events and mocked transport, not live
+broker connections. Other direct emit sites, order-feed adapters, position requests,
+logout/session revocation and background jobs still require isolation review.

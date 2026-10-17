@@ -7,6 +7,7 @@ with async_mode="threading" and avoids greenlet errors under eventlet.
 """
 
 from extensions import socketio
+from utils.account_socket import emit_order
 from utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -17,7 +18,7 @@ def on_order_placed(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "order_event",
             {
                 "symbol": event.symbol,
@@ -42,7 +43,7 @@ def on_smart_order_no_action(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "order_notification",
             {
                 "symbol": event.symbol,
@@ -57,7 +58,7 @@ def on_order_modified(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "modify_order_event",
             {
                 "status": "success",
@@ -78,7 +79,7 @@ def on_order_cancelled(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "cancel_order_event",
             {
                 "status": event.status,
@@ -99,7 +100,7 @@ def on_all_orders_cancelled(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "cancel_order_event",
             {
                 "status": "success",
@@ -118,7 +119,7 @@ def on_position_closed(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "close_position_event",
             {
                 "status": "success",
@@ -133,7 +134,7 @@ def on_basket_completed(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "order_event",
             {
                 "symbol": event.strategy or "Basket",
@@ -154,7 +155,7 @@ def on_split_completed(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "order_event",
             {
                 "symbol": event.symbol or "Split",
@@ -175,7 +176,7 @@ def on_options_completed(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "order_event",
             {
                 "symbol": event.symbol,
@@ -196,7 +197,7 @@ def on_multiorder_completed(event):
     if event.mode == "analyze":
         _emit_analyzer_update(event)
     else:
-        socketio.emit(
+        emit_order(socketio, event,
             "order_event",
             {
                 "symbol": event.underlying,
@@ -244,7 +245,7 @@ def on_order_update(event):
     postback/order-WS fills+rejections, or sandbox engine-internal
     transitions). Global emit — matches every other socketio event in this
     file (single-user-per-deployment, no rooms needed)."""
-    socketio.emit(
+    emit_order(socketio, event,
         "order_update",
         {
             "mode": event.mode,
@@ -269,7 +270,7 @@ def on_order_update(event):
 
 def _emit_analyzer_update(event):
     """Helper to emit the analyzer_update socketio event."""
-    socketio.emit(
+    emit_order(socketio, event,
         "analyzer_update",
         {"request": event.request_data, "response": event.response_data},
     )
@@ -289,7 +290,7 @@ def _emit_gtt_event(event, name):
         _emit_analyzer_update(event)
         return
     try:
-        socketio.emit(
+        emit_order(socketio, event,
             "gtt_event",
             {
                 "event": name,
