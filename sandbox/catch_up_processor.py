@@ -435,12 +435,12 @@ def catch_up_gtts():
         from sandbox.execution_engine import ExecutionEngine
 
         engine = ExecutionEngine()
-        symbols = list({(gtt.symbol, gtt.exchange) for _leg, gtt in rows})
-        quotes = engine._fetch_quotes_batch(symbols)
+        from utils.sandbox_quote_owner import fetch_record_quotes
+        quotes = fetch_record_quotes(engine, (gtt for _leg, gtt in rows))
 
         fired = 0
         for leg, gtt in rows:
-            quote = quotes.get((gtt.symbol, gtt.exchange))
+            quote = quotes.get((gtt.user_id, gtt.symbol, gtt.exchange))
             if not quote:
                 continue
             ltp = quote.get("ltp")

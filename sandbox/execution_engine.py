@@ -36,6 +36,7 @@ from database.sandbox_db import (
 from database.token_db import get_symbol_info
 from sandbox.fund_manager import FundManager, reconcile_margin, validate_margin_consistency
 from services.quotes_service import get_multiquotes, get_quotes
+from utils.sandbox_quote_owner import fetch_record_quotes, quote_api_key
 from utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -157,31 +158,8 @@ class ExecutionEngine:
 
             logger.info(f"Processing {len(pending_orders)} pending orders")
 
-            # Group orders by user and symbol for efficient quote fetching
-            orders_by_symbol = {}
-            for order in pending_orders:
-                key = (order.symbol, order.exchange)
-                if key not in orders_by_symbol:
-                    orders_by_symbol[key] = []
-                orders_by_symbol[key].append(order)
-
-            # Fetch quotes using multiquotes (more efficient - single API call)
-            # Falls back to individual quotes if multiquotes fails
-            quote_cache = {}
-            symbols_list = list(orders_by_symbol.keys())
-
-            # Fetch quotes using multiquotes only (no individual quote fallback to avoid rate limiting)
-            # WebSocket is the primary data source; multiquotes is the fallback
-            quote_cache = self._fetch_quotes_batch(symbols_list)
-
-            # Log symbols that couldn't be fetched (don't retry individually to avoid rate limits)
-            failed_symbols = [
-                s for s in symbols_list if s not in quote_cache or quote_cache[s] is None
-            ]
-            if failed_symbols:
-                logger.debug(
-                    f"{len(failed_symbols)} symbols not available via multiquotes, waiting for WebSocket data"
-                )
+            # Each account's quote cache is isolated, even for the same symbol.
+            quote_cache = fetch_record_quotes(self, pending_orders)
 
             # Deliberately unpaced (issue #1768). Every quote this cycle needs
             # was already fetched above in the single _fetch_quotes_batch call,
@@ -199,7 +177,7 @@ class ExecutionEngine:
             # backlog grew from 0 to 150.
             orders_processed = 0
             for position, order in enumerate(pending_orders, start=1):
-                quote = quote_cache.get((order.symbol, order.exchange))
+                quote = quote_cache.get((order.user_id, order.symbol, order.exchange))
                 if quote:
                     self._process_order(order, quote)
                     orders_processed += 1
@@ -240,11 +218,10 @@ class ExecutionEngine:
         if not rows:
             return
 
-        symbols = list({(gtt.symbol, gtt.exchange) for _leg, gtt in rows})
-        quote_cache = self._fetch_quotes_batch(symbols)
+        quote_cache = fetch_record_quotes(self, (gtt for _leg, gtt in rows))
 
         for leg, gtt in rows:
-            quote = quote_cache.get((gtt.symbol, gtt.exchange))
+            quote = quote_cache.get((gtt.user_id, gtt.symbol, gtt.exchange))
             if not quote:
                 continue
             ltp = quote.get("ltp")
@@ -256,24 +233,16 @@ class ExecutionEngine:
             if gtt_manager.try_claim_trigger(leg.id):
                 gtt_manager.fire_leg(leg.id, execution_price=ltp)
 
-    def _fetch_quote(self, symbol, exchange):
+    def _fetch_quote(self, symbol, exchange, user_id=None):
         """
         Fetch real-time quote for a symbol using API key
         Returns dict with ltp, high, low, open, close, etc.
         Returns None if quote cannot be fetched (permission error, API error, etc.)
         """
         try:
-            # Get any user's API key for fetching quotes
-            from database.auth_db import ApiKeys, decrypt_token
-
-            api_key_obj = ApiKeys.query.first()
-
-            if not api_key_obj:
-                logger.debug("No API keys found for fetching quotes")
+            api_key = quote_api_key(user_id)
+            if not api_key:
                 return None
-
-            # Decrypt the API key
-            api_key = decrypt_token(api_key_obj.api_key_encrypted)
 
             # Use quotes service with API key authentication
             success, response, status_code = get_quotes(
@@ -296,7 +265,7 @@ class ExecutionEngine:
             logger.debug(f"Exception fetching quote for {symbol}: {str(e)}")
             return None
 
-    def _fetch_quotes_batch(self, symbols_list):
+    def _fetch_quotes_batch(self, symbols_list, user_id=None):
         """
         Fetch quotes for multiple symbols in a single API call using multiquotes.
         Returns dict mapping (symbol, exchange) to quote data.
@@ -308,17 +277,9 @@ class ExecutionEngine:
             return quote_cache
 
         try:
-            # Get any user's API key for fetching quotes
-            from database.auth_db import ApiKeys, decrypt_token
-
-            api_key_obj = ApiKeys.query.first()
-
-            if not api_key_obj:
-                logger.debug("No API keys found for fetching multiquotes")
+            api_key = quote_api_key(user_id)
+            if not api_key:
                 return quote_cache
-
-            # Decrypt the API key
-            api_key = decrypt_token(api_key_obj.api_key_encrypted)
 
             # Prepare symbols list for multiquotes API
             symbols_payload = [

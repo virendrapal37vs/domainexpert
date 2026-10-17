@@ -293,7 +293,7 @@ class OrderManager:
                             from sandbox.execution_engine import ExecutionEngine
 
                             engine = ExecutionEngine()
-                            quote = engine._fetch_quote(symbol, exchange)
+                            quote = engine._fetch_quote(symbol, exchange, user_id=self.user_id)
                             if quote and quote.get("ltp") and Decimal(str(quote["ltp"])) > 0:
                                 margin_calculation_price = Decimal(str(quote["ltp"]))
                                 cached_quote = quote  # Cache for immediate execution
@@ -368,7 +368,7 @@ class OrderManager:
                             from sandbox.execution_engine import ExecutionEngine
 
                             engine = ExecutionEngine()
-                            quote = engine._fetch_quote(symbol, exchange)
+                            quote = engine._fetch_quote(symbol, exchange, user_id=self.user_id)
                             if quote and quote.get("ltp") and Decimal(str(quote["ltp"])) > 0:
                                 current_ltp = Decimal(str(quote["ltp"]))
                                 if (action == "BUY" and current_ltp <= price) or (
@@ -445,7 +445,7 @@ class OrderManager:
                             from sandbox.execution_engine import ExecutionEngine
 
                             engine = ExecutionEngine()
-                            quote = engine._fetch_quote(symbol, exchange)
+                            quote = engine._fetch_quote(symbol, exchange, user_id=self.user_id)
                             if quote and quote.get("ltp") and Decimal(str(quote["ltp"])) > 0:
                                 current_ltp = Decimal(str(quote["ltp"]))
                                 trigger_met = False
@@ -1079,7 +1079,7 @@ class OrderManager:
                                 from sandbox.execution_engine import ExecutionEngine
 
                                 engine = ExecutionEngine()
-                                quote = engine._fetch_quote(order.symbol, order.exchange)
+                                quote = engine._fetch_quote(order.symbol, order.exchange, user_id=self.user_id)
                                 if quote and quote.get("ltp"):
                                     order_price = Decimal(str(quote["ltp"]))
                                 else:

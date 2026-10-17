@@ -183,3 +183,15 @@ Five tests use mocked workers; they are not broker execution tests.
 Keep DOMAINXPERT_ACCOUNT_MODES=false: polling execution_engine quote helpers
 still use ApiKeys.query.first(), and background owner propagation is unfinished.
 This patch does not establish multi-user sandbox/trading readiness.
+
+### Polling quote ownership
+
+In per-user Groww mode the execution engine resolves API keys by the order/GTT
+owner instead of the first ApiKeys row. Polling quote batches and caches use
+(owner, symbol, exchange); missing keys/quotes never borrow another owner's data.
+Order-manager immediate checks pass their owner, and GTT catch-up batches per
+owner. Legacy mode retains its existing shared quote behavior. Nine synthetic
+tests include the real extracted polling-cycle and quote-fetch method bodies;
+no live broker request is made. Engine/manager modules also pass Python compile.
+Keep account mode flag off: this does not finish WebSocket price-cache isolation,
+all background mode call sites, or full live order dispatch validation.
