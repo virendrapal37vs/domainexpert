@@ -817,6 +817,11 @@ class WebSocketProxy:
 
             auth_obj = Auth.query.filter_by(name=user_id).first()
 
+            from database.account_broker_db import per_user_groww_enabled
+            if per_user_groww_enabled():
+                from utils.account_stream_config import own_groww_config
+                return own_groww_config(user_id, auth_obj)
+
             if auth_obj and not auth_obj.is_revoked and auth_obj.broker:
                 broker_name = auth_obj.broker
                 logger.info(f"Found broker '{broker_name}' for user {user_id} from database")

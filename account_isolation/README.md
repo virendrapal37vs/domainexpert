@@ -137,3 +137,12 @@ helper delivery and all five source call sites. The reviewed HTML positions rout
 looks up the broker token by session username; this is code review evidence,
 not live two-account brokerage validation. Remaining websocket adapters, session
 revocation and background job ownership are not certified by these checks.
+
+WebSocket config follow-up: in per-user mode the proxy config loader requires
+an active matching Groww auth row, Groww enabled in VALID_BROKERS and saved
+credentials for that username. Missing/revoked/mismatched records fail closed;
+no global environment credentials are returned. Seven helper tests use fake
+users and credentials. Actual broker WebSocket handshakes remain untested.
+Audit blocker: settings_db.get_analyze_mode/set_analyze_mode still use one
+instance-wide row/cache. Do not enable multi-user trading before changing mode
+resolution across session, API and background execution paths.
