@@ -209,3 +209,17 @@ it is not a completed per-user WebSocket engine. Keep account mode flag off:
 background mode callers, live order paths and account-wide isolation still need
 integration verification. Existing processes must restart to load these changes;
 do not toggle environment flags in a running process.
+
+### Core service mode propagation (flag remains off)
+
+Place-order mode decisions now pass their API key explicitly; an internal
+force_live run bypasses the account-mode read as intended. API orderbook and
+positions requests also pass their key, while existing explicit internal live
+reads remain direct broker reads. API analyzer mode transitions propagate their
+key into account lifecycle handling. Four tests execute real extracted service
+function bodies with synthetic owner modes and mocked sandbox/broker boundaries:
+Alice Analyze vs Bob Live, ownerless invalid-key rejection, and both read books.
+No live order is submitted. These tests do not cover the remaining order types,
+all lifecycle entry points, global analyzer log/statistics access or background
+strategy/Flow/bot ownership. Keep DOMAINXPERT_ACCOUNT_MODES=false and staging
+trading blocked until those paths and full-app two-account flows are verified.

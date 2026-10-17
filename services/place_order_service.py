@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from database.auth_db import get_auth_token_broker
 from database.settings_db import get_analyze_mode
+from utils.service_mode import service_analyze_mode
 from events import AnalyzerErrorEvent, OrderFailedEvent, OrderPlacedEvent
 from restx_api.schemas import OrderSchema
 from utils.broker_backpressure import BrokerBusyError
@@ -163,7 +164,7 @@ def place_order_with_auth(
     # (see orderbook_service). This is the same idea made explicit, because a
     # write path should not infer intent from whether a logging argument
     # happens to be None.
-    if get_analyze_mode() and not force_live:
+    if not force_live and service_analyze_mode(api_key=api_key or None):
         from services.sandbox_service import sandbox_place_order
 
         if not api_key:
@@ -347,7 +348,7 @@ def place_order(
     # Validate the order data
     is_valid, _, error_message = validate_order_data(order_data)
     if not is_valid:
-        if get_analyze_mode():
+        if service_analyze_mode(api_key=api_key or None):
             return False, emit_analyzer_error(original_data, error_message), 400
         error_response = {"status": "error", "message": error_message}
         safe_request = {k: v for k, v in original_data.items() if k != "apikey"}

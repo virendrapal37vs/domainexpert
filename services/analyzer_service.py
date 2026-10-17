@@ -119,6 +119,8 @@ def apply_analyze_mode(
     with_scheduler: bool = True,
     catchup: bool = True,
     timeout: float | None = MODE_TRANSITION_TIMEOUT_SECONDS,
+    username: str | None = None,
+    api_key: str | None = None,
 ) -> bool:
     """Set the analyzer mode and bring the sandbox engine in line with it, as one step.
 
@@ -144,7 +146,7 @@ def apply_analyze_mode(
     from utils.account_mode_context import account_modes_enabled
     if account_modes_enabled():
         from services.account_mode_service import change_account_mode
-        return change_account_mode(new_mode, toggle=toggle)
+        return change_account_mode(new_mode, toggle=toggle, username=username, api_key=api_key)
     with mode_transition(timeout):
         if toggle:
             new_mode = not get_analyze_mode()
@@ -233,7 +235,7 @@ def toggle_analyzer_mode_with_auth(
         # Set the analyzer mode and start or stop the execution engine and
         # square-off scheduler to match, as one step.
         try:
-            new_mode = apply_analyze_mode(new_mode)
+            new_mode = apply_analyze_mode(new_mode, api_key=original_data.get("apikey"))
         except LockBusy:
             busy_response = {"status": "error", "message": MODE_BUSY_MESSAGE}
             log_executor.submit(async_log_order, "analyzer_toggle", original_data, busy_response)

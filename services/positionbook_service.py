@@ -98,7 +98,9 @@ def get_positionbook_with_auth(
     # If original_data is None (internal call), use live broker
     from database.settings_db import get_analyze_mode
 
-    if get_analyze_mode() and original_data:
+    from utils.service_mode import service_analyze_mode
+
+    if original_data and service_analyze_mode(api_key=original_data.get("apikey")):
         from services.sandbox_service import sandbox_get_positions
 
         api_key = original_data.get("apikey")
