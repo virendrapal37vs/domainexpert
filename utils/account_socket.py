@@ -42,3 +42,13 @@ def register_account_socket(socketio):
         return None
 
     socketio.on_event('connect', connect, namespace='/')
+
+
+def emit_account(socketio, username, name, payload):
+    """Internal callers must pass an owner from a validated session/DB record."""
+    if not enabled():
+        socketio.emit(name, payload)
+        return
+    if not isinstance(username, str) or not username:
+        return
+    socketio.emit(name, payload, to=room_for(username), namespace='/')

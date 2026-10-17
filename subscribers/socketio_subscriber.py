@@ -243,8 +243,7 @@ def on_sandbox_t1_settlement(event):
 def on_order_update(event):
     """Emit order_update for asynchronous order status changes (broker
     postback/order-WS fills+rejections, or sandbox engine-internal
-    transitions). Global emit — matches every other socketio event in this
-    file (single-user-per-deployment, no rooms needed)."""
+    transitions). Per-account mode delivers only to the API key owner room."""
     emit_order(socketio, event,
         "order_update",
         {

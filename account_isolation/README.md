@@ -130,3 +130,10 @@ usernames are ignored. Legacy mode is unchanged. Restricted staging still blocks
 all Socket.IO transport. Tests use synthetic events and mocked transport, not live
 broker connections. Other direct emit sites, order-feed adapters, position requests,
 logout/session revocation and background jobs still require isolation review.
+
+Action Center follow-up: its five pending-order notification sites now send to
+the validated session owner's room in per-account mode. Tests cover scoped
+helper delivery and all five source call sites. The reviewed HTML positions route
+looks up the broker token by session username; this is code review evidence,
+not live two-account brokerage validation. Remaining websocket adapters, session
+revocation and background job ownership are not certified by these checks.

@@ -1,3 +1,4 @@
+from utils.account_socket import emit_account
 import csv
 import io
 import os
@@ -1059,7 +1060,7 @@ def approve_pending_order_route(order_id):
         if not exec_success and response_data.get(RETURNED_TO_PENDING):
             # Never sent, and back in the pending list to approve again. Not
             # "approved but failed": the page refreshes and shows it pending.
-            socketio.emit(
+            emit_account(socketio, login_username,
                 "pending_order_updated",
                 {"action": "returned", "order_id": order_id, "user_id": login_username},
             )
@@ -1068,7 +1069,7 @@ def approve_pending_order_route(order_id):
             ), status_code
 
         # Emit socket event to notify about order approval
-        socketio.emit(
+        emit_account(socketio, login_username,
             "pending_order_updated",
             {"action": "approved", "order_id": order_id, "user_id": login_username},
         )
@@ -1111,7 +1112,7 @@ def reject_pending_order_route(order_id):
 
     if success:
         # Emit socket event to notify about order rejection
-        socketio.emit(
+        emit_account(socketio, login_username,
             "pending_order_updated",
             {"action": "rejected", "order_id": order_id, "user_id": login_username},
         )
@@ -1135,7 +1136,7 @@ def delete_pending_order_route(order_id):
 
     if success:
         # Emit socket event to notify about order deletion
-        socketio.emit(
+        emit_account(socketio, login_username,
             "pending_order_updated",
             {"action": "deleted", "order_id": order_id, "user_id": login_username},
         )
@@ -1215,7 +1216,7 @@ def approve_all_pending_orders():
             )
 
     # Emit socket event to notify about batch approval
-    socketio.emit(
+    emit_account(socketio, login_username,
         "pending_order_updated",
         {"action": "batch_approved", "user_id": login_username, "count": approved_count},
     )
