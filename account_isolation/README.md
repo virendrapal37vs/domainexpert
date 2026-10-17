@@ -146,3 +146,14 @@ users and credentials. Actual broker WebSocket handshakes remain untested.
 Audit blocker: settings_db.get_analyze_mode/set_analyze_mode still use one
 instance-wide row/cache. Do not enable multi-user trading before changing mode
 resolution across session, API and background execution paths.
+
+### Per-account mode storage foundation (inactive)
+
+`database/account_mode_db.py` stores mode under an exact existing username.
+Unconfigured accounts default to Analyze. Reads avoid a process-wide cache;
+writes accept only booleans and never modify another account's row. The table
+is created only by explicitly calling init_account_mode_db. No application boot,
+mode UI, order dispatch or sandbox lifecycle is wired to this module yet.
+These storage tests do not establish that live orders honor per-account mode.
+Next migration must cover service calls, API/session owner resolution, explicit
+strategy-run mode and shared sandbox engine lifecycle before enabling trading.
