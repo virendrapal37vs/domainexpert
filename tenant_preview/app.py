@@ -21,7 +21,7 @@ def create_app(config=None):
         SESSION_COOKIE_NAME="domainxpert_preview", SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict", SESSION_COOKIE_SECURE=False,
         MAX_CONTENT_LENGTH=8192, WTF_CSRF_TIME_LIMIT=1800,
-        PERMANENT_SESSION_LIFETIME=1800,
+        PERMANENT_SESSION_LIFETIME=1800, ALLOW_GROWW_CHECK=False,
     )
     if config:
         app.config.update(config)
@@ -74,7 +74,7 @@ def create_app(config=None):
 
     @app.get("/")
     def home():
-        return render_template_string(PAGE)
+        return render_template_string(PAGE, allow_groww_check=app.config["ALLOW_GROWW_CHECK"])
 
     @app.get("/preview/csrf")
     def csrf():
@@ -125,6 +125,24 @@ def create_app(config=None):
         store.save_credentials(uid, text(data, "api_key", 4096), text(data, "api_secret", 4096))
         return jsonify(message="Your credentials were encrypted and saved. No broker request was sent.")
 
+    @app.post("/preview/groww/check")
+    @require_user
+    @limits.limit("2 per minute")
+    @limits.limit("20 per day")
+    def groww_check():
+        if app.config["ALLOW_GROWW_CHECK"] is not True:
+            return jsonify(message="Groww checks are disabled. The operator must enable this development feature."), 403
+        saved = store.read_credentials_for_probe(session["preview_user_id"])
+        if saved is None:
+            return jsonify(message="Save your own Groww credentials first."), 400
+        if saved[0].startswith("demo-") or saved[1].startswith("demo-"):
+            return jsonify(message="Demo credentials are for storage tests only. No request was sent."), 400
+        from tenant_preview.groww_probe import check_connection
+        result = check_connection(*saved)
+        # Broker failures are represented in JSON, distinct from HTTP auth errors
+        # at this local endpoint. No token or raw broker body is returned.
+        return jsonify(result)
+
     return app
 
 
@@ -133,9 +151,9 @@ PAGE = '''<!doctype html><html lang="en"><meta charset="utf-8">
 <title>DomainXpert Trade · Onboarding Preview</title>
 <style>body{margin:0;background:#0d1020;color:#eef0ff;font:16px system-ui}main{max-width:920px;margin:48px auto;padding:20px}h1{letter-spacing:-1px}.notice{padding:18px;border:1px solid #6e61ac;border-radius:12px;background:#211c3c}section{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:24px}form{background:#171b30;padding:24px;border-radius:16px}label{display:block;margin:16px 0 6px}input,button{box-sizing:border-box;width:100%;padding:12px;border:1px solid #424867;border-radius:8px;background:#0d1020;color:#fff}button{margin-top:20px;background:#8475ed;cursor:pointer;font-weight:700}small{color:#b7bddb}#message{padding:20px;white-space:pre-wrap}a{color:#a99aff}</style>
 <main><small>DOMAINXPERT TRADE</small><h1>Your account. Your broker credentials.</h1>
-<p class="notice">Development preview · Account creation and encrypted credential storage only. Trading, broker connection and strategy execution are disabled. Use test credentials.</p>
+<p class="notice">Development preview · Account creation and encrypted credential storage only. Trading and strategy execution are disabled. {% if allow_groww_check %}Read-only Groww checks are enabled: a check requests a token and one BHEL quote.{% else %}Groww checks are disabled. Use test credentials.{% endif %}</p>
 <section><form id="register"><h2>Create your profile</h2><label>Email</label><input name="email" type="email" required autocomplete="email"><label>Password</label><input name="password" type="password" minlength="12" maxlength="128" required autocomplete="new-password"><label>Invitation code</label><input name="invitation" type="password" required autocomplete="off"><button>Create account</button></form>
 <form id="login"><h2>Sign in</h2><label>Email</label><input name="email" type="email" required autocomplete="username"><label>Password</label><input name="password" type="password" required autocomplete="current-password"><button>Sign in</button><button type="button" id="logout">Sign out</button></form>
-<form id="credentials"><h2>Your Groww credentials</h2><small>Stored encrypted, never returned to your browser.</small><label>API key</label><input name="api_key" type="password" required autocomplete="off"><label>API secret</label><input name="api_secret" type="password" required autocomplete="off"><button>Save credentials</button><button type="button" id="status">Check saved status</button><button type="button" id="delete">Delete my credentials</button></form></section>
+<form id="credentials"><h2>Your Groww credentials</h2><small>Stored encrypted, never returned to your browser.</small><label>API key</label><input name="api_key" type="password" required autocomplete="off"><label>API secret</label><input name="api_secret" type="password" required autocomplete="off"><button>Save credentials</button><button type="button" id="status">Check saved status</button><button type="button" id="delete">Delete my credentials</button>{% if allow_groww_check %}<button type="button" id="groww-check">Check my Groww connection</button><small>This sends an authentication request and one BHEL quote request to Groww. No order is placed.</small>{% endif %}</form></section>
 <p id="message" role="status" aria-live="polite"></p></main>
-<script>async function call(path,method='GET',data){const token=await fetch('/preview/csrf').then(r=>r.json());const response=await fetch('/preview/'+path,{method,headers:{'Content-Type':'application/json','X-CSRFToken':token.csrf_token},body:data?JSON.stringify(data):undefined});let result;try{result=await response.json()}catch{throw Error('Request rejected. Refresh the page and try again.')}if(!response.ok)throw Error(result.message||'Request rejected');document.getElementById('message').textContent=result.message||(result.configured?'Your credentials are saved.':'No credentials saved for your account.');return result}function run(work){work.catch(e=>document.getElementById('message').textContent=e.message)}for(const id of ['register','login','credentials'])document.getElementById(id).onsubmit=e=>{e.preventDefault();const form=e.currentTarget;run(call(id,id==='credentials'?'PUT':'POST',Object.fromEntries(new FormData(form))).then(()=>form.reset()))};document.getElementById('logout').onclick=()=>run(call('logout','POST'));document.getElementById('status').onclick=()=>run(call('credentials'));document.getElementById('delete').onclick=()=>run(call('credentials','DELETE'));</script></html>'''
+<script>async function call(path,method='GET',data){const token=await fetch('/preview/csrf').then(r=>r.json());const response=await fetch('/preview/'+path,{method,headers:{'Content-Type':'application/json','X-CSRFToken':token.csrf_token},body:data?JSON.stringify(data):undefined});let result;try{result=await response.json()}catch{throw Error('Request rejected. Refresh the page and try again.')}if(!response.ok)throw Error(result.message||'Request rejected');document.getElementById('message').textContent=result.message||(result.configured?'Your credentials are saved.':'No credentials saved for your account.');return result}function run(work){work.catch(e=>document.getElementById('message').textContent=e.message)}for(const id of ['register','login','credentials'])document.getElementById(id).onsubmit=e=>{e.preventDefault();const form=e.currentTarget;run(call(id,id==='credentials'?'PUT':'POST',Object.fromEntries(new FormData(form))).then(()=>form.reset()))};document.getElementById('logout').onclick=()=>run(call('logout','POST'));document.getElementById('status').onclick=()=>run(call('credentials'));document.getElementById('delete').onclick=()=>run(call('credentials','DELETE'));const probe=document.getElementById('groww-check');if(probe)probe.onclick=()=>{probe.disabled=true;run(call('groww/check','POST').finally(()=>probe.disabled=false))};</script></html>'''

@@ -92,6 +92,16 @@ class PreviewStore:
             else:
                 db.add(Credential(user_id=user_id, ciphertext=encrypted))
 
+    def read_credentials_for_probe(self, user_id):
+        """Server-only lookup scoped to the authenticated session's owner."""
+        import json
+        with self.sessions() as db:
+            row = db.get(Credential, user_id)
+            if row is None:
+                return None
+            data = json.loads(self.cipher.decrypt(row.ciphertext.encode()))
+            return data["api_key"], data["api_secret"]
+
     def has_credentials(self, user_id):
         with self.sessions() as db:
             return db.get(Credential, user_id) is not None

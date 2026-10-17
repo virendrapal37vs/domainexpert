@@ -11,7 +11,10 @@ from cryptography.fernet import Fernet
 CONFIG = Path.home() / ".config" / "domainxpert-preview" / "config.json"
 parser = argparse.ArgumentParser(description="Local-only DomainXpert onboarding prototype")
 parser.add_argument("command", choices=["init", "serve", "invite"])
+parser.add_argument("--allow-groww-check", action="store_true", help="Enable read-only Groww token and quote requests (serve only)")
 args = parser.parse_args()
+if args.allow_groww_check and args.command != "serve":
+    parser.error("--allow-groww-check can only be used with serve")
 
 if args.command == "init":
     CONFIG.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -32,7 +35,9 @@ if args.command == "init":
 if not CONFIG.exists():
     raise SystemExit("First run: python -m tenant_preview init")
 from tenant_preview.app import create_app
-app = create_app(json.loads(CONFIG.read_text()))
+settings = json.loads(CONFIG.read_text())
+settings["ALLOW_GROWW_CHECK"] = args.allow_groww_check
+app = create_app(settings)
 if args.command == "invite":
     address = input("Invite email: ").strip().lower()
     if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", address) or len(address) > 120:

@@ -9,11 +9,14 @@ Implemented:
 - Each user can register, log in/out, and save/check/delete their own Groww credentials.
 - Argon2 password hashes, Fernet encrypted credentials, CSRF protection,
   30-minute sessions, rate limits and responses marked no-store.
-- No broker requests or orders. No Python execution or WebSocket proxy.
+- Broker requests are disabled by default. An explicit operator flag enables
+  one authentication request plus one BHEL quote per check. No orders, Python
+  execution, token persistence or WebSocket proxy.
 - No owner ID from client input is used to select a credential record.
 
 This does **not** add users to the live OpenAlgo database. A preview profile will
-not log into the production dashboard. Use dummy broker credentials in this build.
+not log into the production dashboard. Use dummy credentials for storage tests.
+Real credentials are needed only if you explicitly choose to run a Groww check.
 
 ## Install on the existing development worktree
 
@@ -50,12 +53,44 @@ Data: `~/.local/share/domainxpert-preview/onboarding.db` (0600 in private direct
 Do not commit these paths, invitation codes, or encryption keys. `init` refuses
 to overwrite existing keys. Stop with Ctrl+C. The production site is unaffected.
 
+## Optional read-only Groww check
+
+Stop the preview with Ctrl+C and restart it with:
+
+```bash
+cd ~/domainxpert-multiuser
+~/domainxpert-preview-venv/bin/python -m tenant_preview serve --allow-groww-check
+```
+
+The ordinary `serve` command keeps network checks disabled. Never rerun `init`
+when updating; existing accounts, encryption keys and credentials are retained.
+
+The enabled page displays **Check my Groww connection**. It loads only the logged-in
+user's saved API key/secret, asks Groww for a token, fetches one NSE CASH BHEL quote,
+and discards the token. It does not connect the main dashboard or place an order.
+`demo-` credentials are rejected locally. Saving credentials alone makes no request.
+The response distinguishes authentication failure from quote failure, including 403.
+It never echoes a raw broker body, credentials or the token. Requests have fixed HTTPS
+URLs, TLS verification, disabled redirects/proxy inheritance, timeouts and no retry.
+Limits are 2 checks/minute and 20/day **per IP**, in one preview process; a restart
+resets memory limits. This is not a production, distributed broker rate limiter.
+A successful token/quote check does not prove trading permissions or a working feed.
+The current Groww 403 may persist until Groww resolves account access.
+
+Protocol references checked against Groww's official docs:
+- https://groww.in/trade-api/docs/curl — API key/secret approval and checksum flow.
+- https://groww.in/trade-api/docs/curl/live-data — quote URL and request fields.
+
 ## Verification
 
-Nine automated tests cover cross-account reads/writes/deletes, forged owner IDs,
+27 automated test cases cover cross-account reads/writes/deletes, forged owner IDs,
 password hashing and encrypted storage, unauthenticated access/logout, CSRF,
 invitation binding/expiry/reuse/concurrent consumption, invalid input/login, and
-absence of production/trading routes, and enforced login rate limits. No live broker calls are used.
+absence of production/trading routes, and enforced login rate limits. Added cases
+verify the documented authentication/quote requests, token validation, malformed
+responses, 403/429/network/redirect handling, per-user credential selection despite
+forged owner IDs and environment keys, disabled/demo/CSRF gates, and check rate
+limits. All broker tests use mocks. No live broker calls are used.
 
 ## Findings in the original app
 

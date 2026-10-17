@@ -4,3 +4,4 @@ Flask-Limiter>=4,<5
 SQLAlchemy>=2,<3
 argon2-cffi>=23,<26
 cryptography>=44
+httpx==0.28.1
