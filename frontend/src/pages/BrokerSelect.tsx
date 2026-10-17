@@ -1,6 +1,7 @@
 import { BookOpen, ExternalLink, Info, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { OwnGrowwCredentials } from '@/components/auth/OwnGrowwCredentials'
 import { BrokerAuthSignOut } from '@/components/auth/BrokerAuthSignOut'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -56,6 +57,8 @@ const allBrokers = [
 ] as const
 
 interface BrokerConfig {
+  per_user_credentials?: boolean
+  credentials_configured?: boolean
   broker_name: string
   broker_api_key: string
   redirect_url: string
@@ -123,6 +126,11 @@ export default function BrokerSelect() {
 
     if (!brokerConfig) {
       setError('Broker configuration not loaded')
+      return
+    }
+
+    if (brokerConfig.per_user_credentials && !brokerConfig.credentials_configured) {
+      setError('Save your own Groww credentials first')
       return
     }
 
@@ -270,6 +278,12 @@ export default function BrokerSelect() {
                 </Alert>
               )}
 
+              {brokerConfig?.per_user_credentials && (
+                <OwnGrowwCredentials
+                  configured={Boolean(brokerConfig.credentials_configured)}
+                  onSaved={() => setBrokerConfig((current) => current ? { ...current, credentials_configured: true } : current)}
+                />
+              )}
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="broker-select" className="block text-center">
@@ -306,7 +320,7 @@ export default function BrokerSelect() {
                   </Alert>
                 )}
 
-                <Button type="submit" className="w-full" disabled={!selectedBroker || isSubmitting}>
+                <Button type="submit" className="w-full" disabled={!selectedBroker || isSubmitting || Boolean(brokerConfig?.per_user_credentials && !brokerConfig.credentials_configured)}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

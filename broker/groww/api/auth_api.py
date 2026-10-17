@@ -133,7 +133,7 @@ def get_access_token_via_checksum(api_key, api_secret):
             except ValueError:
                 response_data = {}
             if response.status_code != 200:
-                logger.error(f"Groww login refused: HTTP {response.status_code}, {response.text}")
+                logger.error("Groww login refused: HTTP %s", response.status_code)
                 return None, _login_error(response_data, response.status_code)
             return _token_from_response(response_data)
 
@@ -149,7 +149,7 @@ def get_access_token_via_checksum(api_key, api_secret):
         return None, f"Authentication error: {str(e)}"
 
 
-def authenticate_broker(code):
+def authenticate_broker(code, *, credentials=None):
     """
     Authenticate with Groww using API key and secret with checksum-based flow.
     The 'code' parameter is not used as authentication relies on environment variables.
@@ -161,8 +161,14 @@ def authenticate_broker(code):
         tuple: (access_token, error_message)
     """
     try:
-        BROKER_API_KEY = os.getenv("BROKER_API_KEY")
-        BROKER_API_SECRET = os.getenv("BROKER_API_SECRET")
+        from database.account_broker_db import per_user_groww_enabled
+        if per_user_groww_enabled():
+            if not credentials:
+                return None, "Save your own Groww API key and secret before connecting."
+            BROKER_API_KEY, BROKER_API_SECRET = credentials
+        else:
+            BROKER_API_KEY = os.getenv("BROKER_API_KEY")
+            BROKER_API_SECRET = os.getenv("BROKER_API_SECRET")
 
         if not BROKER_API_KEY or not BROKER_API_SECRET:
             return (

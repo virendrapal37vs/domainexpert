@@ -362,3 +362,8 @@ def fix_permissions():
     except Exception as e:
         logger.exception(f"Error fixing permissions: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# Instance settings are shared across accounts. Require the database-backed role.
+from utils.account_access import require_instance_admin
+system_permissions_bp.before_request(require_instance_admin)

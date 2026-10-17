@@ -2685,3 +2685,8 @@ def api_mcp_settings_put():
             "settings_pending": _mcp_settings_payload(),  # what's in .env now
         }
     )
+
+
+# Instance settings are shared across accounts. Require the database-backed role.
+from utils.account_access import require_instance_admin
+admin_bp.before_request(require_instance_admin)

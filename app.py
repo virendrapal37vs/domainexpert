@@ -348,6 +348,11 @@ def create_app():
     app.register_blueprint(flow_bp)  # Register Flow blueprint
     app.register_blueprint(agent_bp)  # Register Agent blueprint
     app.register_blueprint(broker_credentials_bp)  # Register Broker credentials blueprint
+    from blueprints.account_broker import account_broker_bp
+    from database.account_broker_db import init_account_broker_db, per_user_groww_enabled
+    if per_user_groww_enabled():
+        init_account_broker_db()
+    app.register_blueprint(account_broker_bp)
     app.register_blueprint(system_permissions_bp)  # Register System permissions blueprint
     app.register_blueprint(strategy_portfolio_bp)  # Register Strategy Portfolio blueprint
     app.register_blueprint(postback_bp)  # Register broker postback (order-update webhook) blueprint

@@ -38,6 +38,13 @@ def ratelimit_handler(e):
 @limiter.limit(LOGIN_RATE_LIMIT_MIN)
 @limiter.limit(LOGIN_RATE_LIMIT_HOUR)
 def broker_callback(broker, para=None):
+    from database.account_broker_db import per_user_groww_enabled
+    if per_user_groww_enabled():
+        from utils.account_access import current_account
+        if current_account() is None:
+            return jsonify(error="Sign in first."), 401
+        if broker != "groww":
+            return jsonify(error="This development mode supports Groww only."), 403
     logger.info(f"Broker callback initiated for: {broker}")
     logger.debug("Session keys: %s", sorted(session.keys()))
     logger.info(f"Session has user key: {'user' in session}")
@@ -567,7 +574,12 @@ def broker_callback(broker, para=None):
     elif broker == "groww":
         code = "groww"
         logger.debug("Groww broker - authentication initiated")
-        auth_token, error_message = auth_function(code)
+        if per_user_groww_enabled():
+            from database.account_broker_db import get_groww_credentials
+            credentials = get_groww_credentials(session["user"])
+            auth_token, error_message = auth_function(code, credentials=credentials)
+        else:
+            auth_token, error_message = auth_function(code)
         forward_url = "broker.html"
 
     elif broker == "wisdom":

@@ -121,6 +121,15 @@ def get_broker_config():
     broker_name is always returned (needed to display the broker login button).
     broker_api_key and redirect_url are only returned when authenticated.
     """
+    from database.account_broker_db import per_user_groww_enabled, has_groww_credentials
+    if per_user_groww_enabled():
+        from utils.account_access import current_account
+        if current_account() is None:
+            return jsonify(status="error", message="Sign in first"), 401
+        return jsonify(status="success", broker_name="groww", broker_api_key="",
+                       redirect_url="", per_user_credentials=True,
+                       credentials_configured=has_groww_credentials(session["user"]))
+
     REDIRECT_URL = os.getenv("REDIRECT_URL")
 
     # Extract broker name from redirect URL
@@ -195,6 +204,12 @@ def _try_resume_broker_session(username):
     Returns a JSON response if session was resumed, or None to proceed
     with normal broker OAuth flow.
     """
+    from database.account_broker_db import per_user_groww_enabled
+    if per_user_groww_enabled():
+        # Old auth rows may have been minted from global credentials. Require a
+        # fresh, explicitly scoped connection after each password login for now.
+        return None
+
     from database.auth_db import Auth, decrypt_token, get_auth_token_dbquery
 
     try:

@@ -337,3 +337,8 @@ def get_capabilities():
         )
 
     return jsonify({"status": "success", "data": capabilities})
+
+
+# Instance settings are shared across accounts. Require the database-backed role.
+from utils.account_access import require_instance_admin
+broker_credentials_bp.before_request(require_instance_admin)

@@ -1,0 +1,86 @@
+# Main-app account credentials — development integration
+
+This is an incremental integration patch, **not a production multi-user launch**.
+It does not enable signup, create main-app accounts, import preview accounts,
+change production settings, or deploy the frontend build.
+
+## Implemented
+
+- Three shared settings blueprints (`admin`, `broker_credentials`,
+  `system_permissions`) now require an existing database user with `is_admin=True`.
+  This role check applies regardless of the per-user feature flag. Existing route
+  session checks and global CSRF protection are retained. A client role field is
+  never accepted as authority.
+- New `account_broker_credentials` table uses username + broker as its key.
+  Groww API keys/secrets use the application's existing encryption helper and keys.
+- GET/PUT `/api/account/brokers/groww` operates only on `session['user']` after
+  looking up the actual account. It ignores supplied owner IDs, returns no secret,
+  and requires the existing global CSRF token for PUT. The feature is off by default.
+- Credential replacement is refused during a fully logged-in broker session. A
+  user must sign out/sign in to change credentials. In scoped mode automatic
+  broker-session resume is disabled to avoid reusing tokens minted from global keys.
+- In scoped mode the broker page has an own-credentials form; Connect remains
+  disabled until credentials are saved. The Groww callback passes that user's
+  credentials explicitly. The Groww adapter never falls back to global credentials
+  in this mode. Other broker callbacks are refused in this experimental mode.
+- Scoped broker config returns no global API key and verifies the session account.
+- No raw Groww login failure body is logged by the checksum request handler.
+
+## Test on the development worktree
+
+Do not apply this patch in `/home/ubuntu/openalgo` or restart `openalgo.service`.
+From `/home/ubuntu/domainxpert-multiuser`:
+
+```bash
+~/.local/bin/uv pip install --python ~/domainxpert-preview-venv/bin/python \
+  -r account_isolation/requirements-test.txt
+~/domainxpert-preview-venv/bin/python -m pytest -q -o addopts='' \
+  account_isolation/tests --confcutdir=account_isolation/tests
+~/domainxpert-preview-venv/bin/python -m pytest -q -o addopts='' \
+  tenant_preview/tests --confcutdir=tenant_preview/tests
+cd frontend
+npm ci
+npm run test:run -- src/components/auth/OwnGrowwCredentials.test.tsx
+npm run build -- --outDir dist-account-staging
+```
+
+Expected backend results: 8 account tests and 27 preview tests. UI: 2 tests.
+The account tests use synthetic users, temporary SQLite DBs and test encryption
+keys. They exercise the real credential API/store, CSRF, database-backed role
+checks, plus extracted real Groww/auth callback function bodies to avoid booting
+unrelated services. This is **not** an end-to-end full-app startup test. Tests make
+no live broker requests and do not use production keys or databases.
+
+Local validation used Python 3.12, Node 24 and the existing npm lockfile. Build
+succeeded with the project's existing large-chunk warning. The built distribution
+is not included in the patch; source/build output must be deployed together later.
+
+## Feature activation — dedicated staging only, not now
+
+`DOMAINXPERT_PER_USER_GROWW=true` selects the new credential path. Without it,
+the legacy single-user Groww credential path is retained; new credential APIs
+return 404. Never turn this flag on against the current production database as
+an attempted multi-user rollout. Existing live cookies/tokens/background jobs
+have not been migrated by this patch.
+
+A staging process needs its own .env, databases, encryption keys, ports, service,
+broker credentials, and disabled strategy/background execution. Copying the
+production .env or database is not an acceptable staging setup. The separate
+onboarding preview configuration cannot be used as the full app configuration.
+Do not run the full app on this development worktree until that setup is prepared.
+
+## Remaining blockers
+
+- Preview identities are not main-app identities. A reviewed account provisioning
+  and recovery/verification flow is still needed; do not reopen `/setup`.
+- First-admin/last-auth assumptions in background services remain to be replaced.
+- Audit all orders, API keys, WebSocket subscriptions, file paths, sandbox state,
+  strategies and logs for cross-account access. Existing user-scoped records alone
+  are not proof of tenant isolation.
+- Untrusted Python strategy execution requires isolated execution environments,
+  not subprocesses running as the application OS user.
+- Test full staging startup, session reuse/revocation, two-account broker flow,
+  UI authorization and permission changes before deployment.
+- Groww access still needs a live check after the outstanding 403 is resolved.
+
+Do not merge this feature branch into the production deployment yet.
