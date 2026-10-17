@@ -278,3 +278,15 @@ nonmutation/redaction, legacy visibility and migration preservation. This does
 not claim all direct writer call sites now propagate identity; logs whose callers
 omit the key remain unowned. Backup staging DB before restart to apply migration.
 Full HTTP export and background strategy execution are still pending verification.
+
+### OpenScript run-start owner snapshot
+
+Per-user OpenScript starts now resolve mode from the explicit run user and a
+matching verified API key. Missing/mismatched identity or disabled account-mode
+migration rejects the start before log creation/child spawning. Legacy mode
+keeps its previous global reader and failure behavior. Five tests execute real
+mode/read and early spawn function bodies with synthetic accounts, never spawning
+a child. This does not certify script record ownership, stop/status permissions,
+child execution isolation or run restoration. Shared strategy RiskTickFeed still
+has a first-user API-key fallback and remains a blocker for public strategy use.
+Keep account modes disabled and restricted staging active.

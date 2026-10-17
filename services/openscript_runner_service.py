@@ -577,7 +577,7 @@ def _api_key_for(user_id: str | None) -> str | None:
         return None
 
 
-def _analyzer_mode() -> str:
+def _analyzer_mode(user_id=None, api_key=None) -> str:
     """Which side the platform sends an order to right now: sandbox or live.
 
     Read when a run starts, which is the only moment it answers the question
@@ -585,6 +585,12 @@ def _analyzer_mode() -> str:
     read, and then nothing is recorded and a book falls back to the platform's
     setting at the time it is opened, which is what it did before this existed.
     """
+    from database.account_broker_db import per_user_groww_enabled
+    if per_user_groww_enabled():
+        from utils.account_mode_context import account_modes_enabled, read_account_mode
+        if not account_modes_enabled() or not user_id or not api_key:
+            raise ValueError("Account-owned OpenScript mode is not ready")
+        return "sandbox" if read_account_mode(username=user_id, api_key=api_key) else "live"
     try:
         from database.settings_db import get_analyze_mode
 
@@ -807,12 +813,15 @@ def _spawn_claimed(
 
     # Everything that can fail slowly happens before the lock is taken again.
     api_key = _api_key_for(user_id)
+    try:
+        mode = _analyzer_mode(user_id=user_id, api_key=api_key)
+    except ValueError:
+        return False, "Run owner, API key and account mode must be ready before starting OpenScript"
     started = _ist_now()
     log_file = log_file_for(run_id, started)
     # The calendar's day is the day in its own zone, which is the zone the
     # start time is taken in.
     facts = _instrument_facts_text(symbol, exchange, started.date(), run_id)
-    mode = _analyzer_mode()
 
     try:
         log_file.parent.mkdir(parents=True, exist_ok=True)
