@@ -8,6 +8,7 @@ This service places option orders by:
 
 Supports both live trading and sandbox (analyze) mode, just like place_order_service.
 """
+from utils.service_mode import service_analyze_mode
 
 import copy
 import os
@@ -306,8 +307,8 @@ def place_options_order(
             }
 
             # Add mode if in analyze mode
-            mode = "analyze" if get_analyze_mode() else "live"
-            if get_analyze_mode():
+            mode = "analyze" if service_analyze_mode(api_key=api_key) else "live"
+            if service_analyze_mode(api_key=api_key):
                 response_data["mode"] = "analyze"
 
             # Prepare request data for logging (without apikey)

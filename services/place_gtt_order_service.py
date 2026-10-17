@@ -1,3 +1,4 @@
+from utils.service_mode import service_analyze_mode
 import copy
 import importlib
 from typing import Any
@@ -90,7 +91,7 @@ def place_gtt_order_with_auth(
 
     # Analyze (sandbox) mode: the sandbox GTT engine owns the whole lifecycle,
     # so nothing below this point (broker module, broker call) applies.
-    if get_analyze_mode():
+    if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
         from services.sandbox_service import sandbox_place_gtt_order
 
         last_price = _fetch_last_price_for_sandbox(

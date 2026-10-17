@@ -223,3 +223,15 @@ No live order is submitted. These tests do not cover the remaining order types,
 all lifecycle entry points, global analyzer log/statistics access or background
 strategy/Flow/bot ownership. Keep DOMAINXPERT_ACCOUNT_MODES=false and staging
 trading blocked until those paths and full-app two-account flows are verified.
+
+### Remaining keyed order/read service checks
+
+Thirty-three mode reads across 18 service files now propagate the available API
+key: smart/options/multiorder/basket/split orders, modify/cancel/close operations,
+GTT operations, funds/holdings/trades/order-status/open-position reads. Explicit
+internal live read bypasses retain their original intent. Eight synthetic tests
+execute real function bodies through their mode gate to verify key propagation;
+these are not complete execution/fill tests. All 18 modified modules compile.
+Keep account-mode flag off: runner/bot ownership, analyzer log access, remaining
+lifecycle paths and full-app integration are not complete. A passing synthetic
+suite is not authorization to enable public trading.

@@ -1,3 +1,4 @@
+from utils.service_mode import service_analyze_mode
 import copy
 import importlib
 from typing import Any
@@ -136,7 +137,7 @@ def place_smart_order_with_auth(
     # Validate order data
     is_valid, error_message = validate_smart_order(order_data)
     if not is_valid:
-        if get_analyze_mode():
+        if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
             return False, emit_analyzer_error(original_data, error_message), 400
         error_response = {"status": "error", "message": error_message}
         bus.publish(OrderFailedEvent(
@@ -147,7 +148,7 @@ def place_smart_order_with_auth(
         return False, error_response, 400
 
     # If in analyze mode, route to sandbox for sandbox trading
-    if get_analyze_mode():
+    if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
         from services.sandbox_service import sandbox_place_smart_order
 
         if not api_key:

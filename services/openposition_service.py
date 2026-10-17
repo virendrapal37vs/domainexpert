@@ -1,3 +1,4 @@
+from utils.service_mode import service_analyze_mode
 import copy
 from typing import Any, Dict, Optional, Tuple
 
@@ -79,7 +80,7 @@ def get_open_position_with_auth(
         request_data.pop("apikey", None)
 
     # If in analyze mode, route to sandbox for real position data
-    if get_analyze_mode():
+    if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
         from services.sandbox_service import sandbox_get_positions
 
         api_key = original_data.get("apikey")

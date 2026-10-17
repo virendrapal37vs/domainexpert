@@ -1,3 +1,4 @@
+from utils.service_mode import service_analyze_mode
 import copy
 import importlib
 from typing import Any, Dict, Optional, Tuple
@@ -49,7 +50,7 @@ def modify_gtt_order_with_auth(
     api_key = original_data.get("apikey", "")
     trigger_id = order_data.get("trigger_id", "")
 
-    if get_analyze_mode():
+    if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
         from services.sandbox_service import sandbox_modify_gtt_order
 
         success, response, status_code = sandbox_modify_gtt_order(
@@ -163,7 +164,7 @@ def modify_gtt_order(
         # here if sandbox was wired.
         from database.auth_db import get_order_mode, verify_api_key
 
-        if not get_analyze_mode():
+        if not service_analyze_mode(api_key=api_key):
             user_id = verify_api_key(api_key)
             if user_id:
                 order_mode = get_order_mode(user_id)

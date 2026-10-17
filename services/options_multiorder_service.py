@@ -5,6 +5,7 @@ Places multiple option legs with common underlying, resolving symbols based on o
 BUY legs are executed first, then SELL legs for margin efficiency.
 Supports split orders per leg if splitsize is specified.
 """
+from utils.service_mode import service_analyze_mode
 
 import copy
 import math
@@ -476,7 +477,7 @@ def resolve_and_place_leg(
                 "total_quantity": total_quantity,
                 "split_size": splitsize,
                 "split_results": split_results,
-                "mode": "analyze" if get_analyze_mode() else "live",
+                "mode": "analyze" if service_analyze_mode(api_key=api_key) else "live",
             }
 
         # Step 2 (non-split): Construct regular order data - include underlying_ltp for execution reference
@@ -617,7 +618,7 @@ def process_multiorder_with_auth(
     # Each leg has a different option symbol — without this, each leg would make
     # its own REST API quote call (~300-500ms each).
     leg_quote_cache = {}
-    if get_analyze_mode():
+    if service_analyze_mode(api_key=api_key):
         try:
             # Resolve all option symbols first (DB lookups, fast)
             resolved_symbols = []
@@ -681,7 +682,7 @@ def process_multiorder_with_auth(
     failed_legs = len(results) - successful_legs
 
     # Build response
-    mode = "analyze" if get_analyze_mode() else "live"
+    mode = "analyze" if service_analyze_mode(api_key=api_key) else "live"
     response_data = {
         "status": "success",
         "underlying": common_data.get("underlying"),
@@ -690,7 +691,7 @@ def process_multiorder_with_auth(
     }
 
     # Add mode if in analyze mode
-    if get_analyze_mode():
+    if service_analyze_mode(api_key=api_key):
         response_data["mode"] = "analyze"
 
     # Prepare request data for logging (without apikey)
@@ -748,7 +749,7 @@ def place_options_multiorder(
     legs = multiorder_data.get("legs", [])
     if not legs:
         error_msg = "No legs provided in the request"
-        if get_analyze_mode():
+        if service_analyze_mode(api_key=api_key):
             return False, emit_analyzer_error(original_data, error_msg), 400
         return False, {"status": "error", "message": error_msg}, 400
 

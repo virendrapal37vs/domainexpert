@@ -1,3 +1,4 @@
+from utils.service_mode import service_analyze_mode
 import copy
 import importlib
 import time
@@ -201,7 +202,7 @@ def process_basket_order_with_auth(
     api_key = basket_data.get("apikey")
 
     # If in analyze mode, route each order to sandbox
-    if get_analyze_mode():
+    if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
         from services.sandbox_service import sandbox_place_order
 
         analyze_results = []

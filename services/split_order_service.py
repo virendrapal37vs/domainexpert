@@ -1,3 +1,4 @@
+from utils.service_mode import service_analyze_mode
 import copy
 import importlib
 import os
@@ -180,7 +181,7 @@ def split_order_with_auth(
         total_quantity = int(split_data["quantity"])
         if split_size <= 0:
             error_message = "Split size must be greater than 0"
-            if get_analyze_mode():
+            if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
                 return False, emit_analyzer_error(original_data, error_message), 400
             error_response = {"status": "error", "message": error_message}
             bus.publish(OrderFailedEvent(
@@ -201,7 +202,7 @@ def split_order_with_auth(
         total_orders = num_full_orders + (1 if remaining_qty > 0 else 0)
         if total_orders > MAX_ORDERS:
             error_message = f"Total number of orders would exceed maximum limit of {MAX_ORDERS}"
-            if get_analyze_mode():
+            if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
                 return False, emit_analyzer_error(original_data, error_message), 400
             error_response = {"status": "error", "message": error_message}
             bus.publish(OrderFailedEvent(
@@ -216,7 +217,7 @@ def split_order_with_auth(
 
     except ValueError:
         error_message = "Invalid quantity or split size"
-        if get_analyze_mode():
+        if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
             return False, emit_analyzer_error(original_data, error_message), 400
         error_response = {"status": "error", "message": error_message}
         bus.publish(OrderFailedEvent(
@@ -230,7 +231,7 @@ def split_order_with_auth(
         return False, error_response, 400
 
     # If in analyze mode, route to sandbox for sandbox trading
-    if get_analyze_mode():
+    if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
         from services.sandbox_service import sandbox_place_order
 
         api_key = original_data.get("apikey")

@@ -1,3 +1,4 @@
+from utils.service_mode import service_analyze_mode
 import copy
 from typing import Any, Dict, Optional, Tuple
 
@@ -80,7 +81,7 @@ def get_order_status_with_auth(
         request_data.pop("apikey", None)
 
     # Log the mode and order details
-    is_analyze_mode = get_analyze_mode()
+    is_analyze_mode = service_analyze_mode(api_key=(original_data or {}).get("apikey"))
     orderid = status_data.get("orderid")
     logger.info(
         f"[OrderStatus] Processing order status request - Mode: {'ANALYZE' if is_analyze_mode else 'LIVE'}, OrderID: {orderid}, Broker: {broker}"

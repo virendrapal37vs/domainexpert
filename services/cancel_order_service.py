@@ -1,3 +1,4 @@
+from utils.service_mode import service_analyze_mode
 import copy
 import importlib
 from typing import Any, Dict, Optional, Tuple
@@ -85,7 +86,7 @@ def cancel_order_with_auth(
         order_request_data.pop("apikey", None)
 
     # If in analyze mode, route to sandbox for sandbox trading
-    if get_analyze_mode():
+    if service_analyze_mode(api_key=(original_data or {}).get("apikey")):
         from services.sandbox_service import sandbox_cancel_order
 
         # Get API key from original data
@@ -237,7 +238,7 @@ def cancel_order(
         from database.settings_db import get_analyze_mode
 
         # Check analyze mode first - if in analyze mode, allow execution
-        if not get_analyze_mode():
+        if not service_analyze_mode(api_key=api_key):
             user_id = verify_api_key(api_key)
             if user_id:
                 order_mode = get_order_mode(user_id)

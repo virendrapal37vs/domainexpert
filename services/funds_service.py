@@ -1,3 +1,4 @@
+from utils.service_mode import service_analyze_mode
 import importlib
 from typing import Any
 
@@ -49,7 +50,7 @@ def get_funds_with_auth(
     # If original_data is None (internal call from dashboard), use live broker
     from database.settings_db import get_analyze_mode
 
-    if get_analyze_mode() and original_data:
+    if original_data and service_analyze_mode(api_key=original_data.get("apikey")):
         from services.sandbox_service import sandbox_get_funds
 
         api_key = original_data.get("apikey")
