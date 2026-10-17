@@ -187,6 +187,9 @@ class ScalpingRiskMonitor:
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> None:
         """Initial reconcile at boot (non-blocking). Idles when nothing is set."""
+        from utils.scalping_account_guard import shared_scalping_disabled
+        if shared_scalping_disabled():
+            return None
         self.request_sync()
 
     def request_sync(self) -> None:
@@ -195,6 +198,9 @@ class ScalpingRiskMonitor:
         Coalesces bursts: if a sync is already running, just flag that another is
         needed so it re-runs once. Safe to call from request threads.
         """
+        from utils.scalping_account_guard import shared_scalping_disabled
+        if shared_scalping_disabled():
+            return None
         with self._sync_lock:
             self._sync_pending = True
             if self._sync_thread is not None and self._sync_thread.is_alive():
@@ -244,6 +250,9 @@ class ScalpingRiskMonitor:
         Rebuilds the in-memory state from the DB and subscribes/unsubscribes the
         feed to exactly the set of symbols that have an active SL.
         """
+        from utils.scalping_account_guard import shared_scalping_disabled
+        if shared_scalping_disabled():
+            return None
         from database.scalping_db import get_active_sl_states
 
         with self._lock:
@@ -378,6 +387,9 @@ class ScalpingRiskMonitor:
 
     # ------------------------------------------------------------------ tick handler
     def _on_tick(self, data: dict) -> None:
+        from utils.scalping_account_guard import shared_scalping_disabled
+        if shared_scalping_disabled():
+            return None
         try:
             symbol = data.get("symbol")
             exchange = data.get("exchange")
@@ -497,6 +509,9 @@ class ScalpingRiskMonitor:
         worker.start()
 
     def _exit_worker(self, key: str, state: dict, reason: str | None, ltp: float) -> None:
+        from utils.scalping_account_guard import shared_scalping_disabled
+        if shared_scalping_disabled():
+            return None
         symbol = state["symbol"]
         exchange = state["exchange"]
         product = state["product"]
@@ -669,6 +684,9 @@ class ScalpingRiskMonitor:
         undeterminable; callers then degrade safely (the exit worker's live-position
         check + the per-exit mode guard still protect).
         """
+        from utils.scalping_account_guard import shared_scalping_disabled
+        if shared_scalping_disabled():
+            return None
         try:
             from database.settings_db import get_analyze_mode
 
@@ -679,6 +697,9 @@ class ScalpingRiskMonitor:
             self._remove_session("database.settings_db")
 
     def _resolve_api_key(self) -> str | None:
+        from utils.scalping_account_guard import shared_scalping_disabled
+        if shared_scalping_disabled():
+            return None
         from database.auth_db import get_api_key_for_tradingview
         from database.user_db import find_user_by_username
 
@@ -699,6 +720,9 @@ class ScalpingRiskMonitor:
         get_positionbook routes by param presence (auth_token+broker would force
         the live book and hide sandbox positions). Returns None if no api_key.
         """
+        from utils.scalping_account_guard import shared_scalping_disabled
+        if shared_scalping_disabled():
+            return None
         from database.auth_db import get_api_key_for_tradingview
         from database.user_db import find_user_by_username
 

@@ -36,6 +36,14 @@ logger = get_logger(__name__)
 
 scalping_bp = Blueprint("scalping_bp", __name__, url_prefix="/")
 
+@scalping_bp.before_request
+def require_account_safe_scalping():
+    from utils.scalping_account_guard import shared_scalping_disabled
+    if shared_scalping_disabled():
+        return jsonify(status="error", code="SCALPING_ACCOUNT_ISOLATION_PENDING",
+                       message="Scalping is unavailable while per-account risk monitoring is being migrated."), 503
+
+
 # Strategy tag stamped on every scalping order (shown in order/trade books).
 SCALPING_STRATEGY = "Scalping"
 

@@ -252,3 +252,15 @@ complete full-app browser/export tests. Existing DB files should be backed up
 before loading this schema migration on server. No production restart is needed.
 Background audit: ScalpingRiskMonitor still resolves find_user_by_username()
 without an owner (first user); do not enable multi-user trading yet.
+
+### Shared scalping monitor guard (feature unavailable in multi-user mode)
+
+Scalping's singleton resolves the first user and its persisted SL/tracked state
+is not account-scoped. Until that storage/worker migration is complete, either
+per-user Groww or account-mode flag disables the scalping blueprint (503 with
+SCALPING_ACCOUNT_ISOLATION_PENDING) and prevents monitor startup, resync, ticks,
+exits and first-user auth/mode resolution. Single-user legacy behavior is retained.
+Nine tests execute the real monitor guard methods and Flask route gate, including
+legacy route availability. This is an explicit feature block, not a multi-user
+scalping implementation. Restart staging to load it; do not alter running flags.
+Other background runners and general API logs remain under audit.
