@@ -877,6 +877,27 @@ class WebSocketProxy:
             return None
 
     async def authenticate_client(self, client_id, data):
+        """Release adapters created by an unsuccessful account authentication."""
+        created = []
+        try:
+            await self._authenticate_client(client_id, data, created)
+        finally:
+            for owner, adapter in created:
+                # A second socket may have adopted this shared adapter while
+                # the final credential check was awaiting its database read.
+                if owner in self.user_mapping.values() and self.broker_adapters.get(owner) is adapter:
+                    continue
+                if self.broker_adapters.get(owner) is adapter:
+                    self.broker_adapters.pop(owner, None)
+                    self.adapter_auth_stamps.pop(owner, None)
+                try:
+                    adapter.disconnect()
+                except Exception:
+                    logger.warning("Failed to release an uncommitted broker adapter")
+                if owner not in self.user_mapping.values() and owner not in self.broker_adapters:
+                    self.user_broker_mapping.pop(owner, None)
+
+    async def _authenticate_client(self, client_id, data, created):
         """
         Authenticate a client using their API key and determine their broker
 
@@ -886,6 +907,9 @@ class WebSocketProxy:
         """
         from database.account_broker_db import per_user_groww_enabled
         account_scoped = per_user_groww_enabled()
+        socket = self.clients.get(client_id)
+        if account_scoped and socket is None:
+            return
         if account_scoped and client_id in self.user_mapping:
             await self.send_error(client_id, "REAUTHENTICATION_REQUIRES_RECONNECT",
                                   "Reconnect before authenticating again")
@@ -921,6 +945,8 @@ class WebSocketProxy:
         if account_scoped:
             from utils.proxy_auth_state import proxy_auth_stamp
             auth_stamp = await aio.to_thread(proxy_auth_stamp, user_id, broker_name, api_key)
+            if self.clients.get(client_id) is not socket:
+                return
             if not auth_stamp:
                 await self.send_error(client_id, "AUTHENTICATION_ERROR", "Account credentials are inactive")
                 return
@@ -972,6 +998,8 @@ class WebSocketProxy:
             try:
                 # Create broker adapter with dynamic broker selection
                 adapter = create_broker_adapter(broker_name)
+                if account_scoped and adapter:
+                    created.append((user_id, adapter))
                 if not adapter:
                     await self.send_error(
                         client_id,
@@ -1092,6 +1120,8 @@ class WebSocketProxy:
 
                         # Retry adapter creation
                         adapter = create_broker_adapter(broker_name)
+                        if account_scoped and adapter:
+                            created.append((user_id, adapter))
                         if adapter:
                             # Clear cache on the new adapter as well
                             if hasattr(adapter, 'clear_auth_cache_for_user'):
@@ -1136,6 +1166,8 @@ class WebSocketProxy:
 
         if account_scoped:
             current_stamp = await aio.to_thread(proxy_auth_stamp, user_id, broker_name)
+            if self.clients.get(client_id) is not socket:
+                return
             if current_stamp != auth_stamp:
                 await self.send_error(client_id, "AUTHENTICATION_ERROR", "Account credentials changed during connection")
                 return

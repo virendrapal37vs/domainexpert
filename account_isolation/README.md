@@ -409,3 +409,14 @@ Every protected send incurs DB validation; throughput/load and connection setup/
 teardown races still require integration verification. Idle clients close on their
 next action/delivery, not a periodic sweep. No DB schema/frontend changes. Keep
 restricted staging active and account-mode flag off.
+
+### Proxy setup cleanup
+
+Per-account authentication now keeps the original client socket identity across
+credential reads and refuses to commit a disconnected or replaced socket.
+Adapters created by an unsuccessful setup are disconnected in a finally block;
+a shared adapter already adopted by another authenticated socket is retained.
+These fake-adapter method tests cover failed initialization, credential changes,
+socket removal during the final read, successful setup, and another socket
+adopting the adapter. They do not verify a live broker handshake or certify all
+concurrent setup, connection-pool, and teardown behavior.
