@@ -60,6 +60,14 @@ logger = logging.getLogger(__name__)
 # Create blueprint with /python route
 python_strategy_bp = Blueprint("python_strategy_bp", __name__, url_prefix="/python")
 
+@python_strategy_bp.before_request
+def require_account_safe_python_strategy():
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return jsonify({"status": "error", "code": "PYTHON_ACCOUNT_ISOLATION_PENDING",
+                        "message": "Python strategies require an isolated account runner."}), 503
+
+
 # Timezone configuration - Indian Standard Time
 IST = pytz.timezone("Asia/Kolkata")
 
@@ -219,6 +227,9 @@ def _update_config(
 
 def broadcast_status_update(strategy_id: str, status: str, message: str = None):
     """Broadcast strategy status update to all SSE subscribers"""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return
     event_data = {
         "strategy_id": strategy_id,
         "status": status,
@@ -474,7 +485,9 @@ def verify_strategy_ownership(strategy_id, user_id, return_config=False):
 
     # Check ownership - allow access if user_id matches or if strategy has no owner (legacy)
     strategy_owner = config.get("user_id")
-    if strategy_owner and strategy_owner != user_id:
+    from utils.strategy_account_guard import shared_strategy_disabled
+    account_scoped = shared_strategy_disabled()
+    if (account_scoped and (not user_id or strategy_owner != user_id)) or (strategy_owner and strategy_owner != user_id):
         return False, (
             jsonify({"status": "error", "message": "Unauthorized access to strategy"}),
             403,
@@ -761,6 +774,9 @@ def set_resource_limits():
 
 def start_strategy_process(strategy_id):
     """Start a strategy in a new process - cross-platform implementation"""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return False, "Python strategies require an isolated account runner."
     # Refused once shutdown has begun, checked before the lock and again under
     # it: a scheduled start already running when cleanup takes its snapshot
     # would otherwise launch a child that nothing stops and that outlives the
@@ -3962,6 +3978,9 @@ def initialize_with_app_context():
     against strategy state that was still being restored, and a failed attempt
     was never retried by the callers that had already given up on it.
     """
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return
     global _initialized
     if _initialized:
         return
@@ -3973,6 +3992,9 @@ def initialize_with_app_context():
 
 def _initialize_locked():
     """The one-time work. The caller holds _INIT_LOCK."""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return
     global _initialized
 
     try:

@@ -457,3 +457,17 @@ missing own adapters never fall back to another account, failed requests do not
 change the other account's registry, and anonymous requests are rejected.
 No subscription-handler behavior changed. These tests do not exercise the live
 Groww adapter or connection-pool subscription bookkeeping.
+
+### Python strategy execution boundary
+
+Per-account mode now explicitly rejects the entire Python strategy blueprint
+with PYTHON_ACCOUNT_ISOLATION_PENDING (503), including code, logs and SSE.
+Direct process starts and background initialization/restore entry points refuse
+to run; status broadcasts return before accessing shared subscriber queues.
+Ownership checks reject ownerless legacy configurations in account mode.
+Legacy behavior is retained with both account flags off. This is a feature guard,
+not an account sandbox: uploaded Python still requires an isolated runner with
+separate filesystem, credentials and process permissions before this guard can
+be removed. Existing processes are not killed by enabling the flag; deploy from
+a stopped staging instance with no strategy children running. Nine tests execute
+entry-point bodies and HTTP guard behavior; live runner isolation is not tested.
