@@ -548,6 +548,9 @@ def execute_workflow_scheduled(
     the key in the jobstore, still run. New jobs pass None and the current key
     is decrypted from the workflow row on every run.
     """
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return
     from services.flow_executor_service import execute_workflow
 
     logger.info(f"Scheduled execution of workflow {workflow_id}")

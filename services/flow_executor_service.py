@@ -4685,6 +4685,9 @@ def execute_workflow(
     workflow_id: int, webhook_data: dict[str, Any] | None = None, api_key: str = None
 ) -> dict:
     """Execute a workflow synchronously"""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return {"status": "error", "code": "FLOW_ACCOUNT_ISOLATION_PENDING", "message": "Account-owned Flow execution is not available."}
     lock = get_workflow_lock(workflow_id)
 
     # Try-acquire, not locked()-then-acquire. The two-step form let both callers

@@ -471,3 +471,15 @@ separate filesystem, credentials and process permissions before this guard can
 be removed. Existing processes are not killed by enabling the flag; deploy from
 a stopped staging instance with no strategy children running. Nine tests execute
 entry-point bodies and HTTP guard behavior; live runner isolation is not tested.
+
+### Flow automation boundary
+
+Flow currently lists workflows without an account filter. Until workflow CRUD,
+webhooks, triggers and delivery are migrated, per-account mode refuses the whole
+Flow blueprint with FLOW_ACCOUNT_ISOLATION_PENDING (503). Direct execute_workflow
+and scheduled callbacks also return before locks, database reads or broker calls.
+Legacy behavior is unchanged with both account flags off. This guard does not
+implement per-account Flow, stop previously executing jobs or disable every
+monitor thread; use restricted staging where schedulers/adapters remain off.
+Six tests execute HTTP guard and direct/scheduled entry-point bodies with no
+live workflow execution. Bot configuration and notification ownership remain pending.

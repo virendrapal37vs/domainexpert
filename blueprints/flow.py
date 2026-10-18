@@ -19,6 +19,14 @@ logger = logging.getLogger(__name__)
 
 flow_bp = Blueprint("flow", __name__, url_prefix="/flow")
 
+@flow_bp.before_request
+def require_account_safe_flow():
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return jsonify({"status": "error", "code": "FLOW_ACCOUNT_ISOLATION_PENDING",
+                        "message": "Flow automation requires account-owned workflows and triggers."}), 503
+
+
 # The same variable and default the /chartink webhook reads, and the legacy
 # /strategy webhook read before it was removed. Flow inherits the budget an
 # operator has already configured rather than introducing a second knob.
