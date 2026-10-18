@@ -314,10 +314,13 @@ def get_requests():
         return jsonify({"requests": []}), 500
 
 
-@analyzer_bp.route("/clear")
+@analyzer_bp.route("/clear", methods=["GET", "POST"])
 @check_session_validity
 def clear_logs():
     """Clear analyzer logs"""
+    from database.account_broker_db import per_user_groww_enabled
+    if per_user_groww_enabled() and request.method != "POST":
+        return jsonify(status="error", message="Use a CSRF-protected POST to clear your logs"), 405
     try:
         # Delete all logs older than 24 hours
         cutoff = datetime.now(pytz.UTC) - timedelta(hours=24)

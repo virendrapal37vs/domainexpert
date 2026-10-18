@@ -319,3 +319,19 @@ staging DB and signup/login limits apply; do not repeatedly rerun after 429.
 This script has been syntax-checked locally but must be run against the actual
 staging process to establish an HTTP result. It does not establish trading,
 WebSocket tenant delivery, email ownership, log export, or background isolation.
+
+### Real-blueprint HTTP isolation tests (synthetic boundaries)
+
+Ten additional tests register the real order/log/analyzer Flask blueprints.
+Broker-session checks are replaced with the existing require_account decorator;
+book-service responses and book template rendering are stubbed. The tests verify
+session-owner token/API-key arguments and HTTP output for orderbook/positions,
+real SQLite log list/stats/search/export ownership despite query-string owner
+spoofing, anonymous rejection and own-only log clearing. Shared symbol/socket
+providers are stubbed only to import the analyzer statistics module; its actual
+statistics/query/CSV code executes. This is stronger than extracted function
+checks but is not a full running-app broker integration test.
+
+In per-user mode /analyzer/clear now requires POST (GET returns 405), with global
+CSRF protection. Legacy mode still accepts the old GET. POST deletes only the
+owner's rows older than 24 hours. No schema migration is added by this patch.
