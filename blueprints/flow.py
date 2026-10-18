@@ -41,6 +41,19 @@ def get_current_api_key():
     return get_api_key_for_tradingview(username)
 
 
+def _flow_account_owner():
+    """Only server-authenticated identity may scope workflow CRUD."""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if not shared_strategy_disabled():
+        return None
+    from utils.account_access import current_account
+    from flask import abort
+    account = current_account()
+    if account is None:
+        abort(401)
+    return account.username
+
+
 # === Workflow CRUD Routes ===
 
 
@@ -50,7 +63,9 @@ def list_workflows():
     """List all workflows"""
     from database.flow_db import get_all_workflows, get_workflow_executions
 
-    workflows = get_all_workflows()
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflows
+    workflows = get_account_workflows(owner) if owner is not None else get_all_workflows()
     items = []
 
     for wf in workflows:
@@ -79,6 +94,7 @@ def create_workflow():
     """Create a new workflow"""
     from database.flow_db import create_workflow
 
+    owner = _flow_account_owner()
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -137,7 +153,8 @@ def create_workflow():
     nodes = data.get("nodes", [])
     edges = data.get("edges", [])
 
-    workflow = create_workflow(name=name, description=description, nodes=nodes, edges=edges)
+    workflow = create_workflow(name=name, description=description, nodes=nodes, edges=edges,
+                               owner_username=owner)
 
     if not workflow:
         return jsonify({"error": "Failed to create workflow"}), 500
@@ -166,7 +183,9 @@ def get_workflow(workflow_id):
     """Get a workflow by ID"""
     from database.flow_db import get_workflow
 
-    workflow = get_workflow(workflow_id)
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    workflow = get_account_workflow(workflow_id, owner) if owner is not None else get_workflow(workflow_id)
     if not workflow:
         return jsonify({"error": "Workflow not found"}), 404
 
@@ -253,6 +272,14 @@ def update_workflow(workflow_id):
     """Update a workflow"""
     from database.flow_db import update_workflow
 
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    if owner is not None:
+        owned = get_account_workflow(workflow_id, owner)
+        if owned is None:
+            return jsonify({"error": "Workflow not found"}), 404
+        if owned.is_active:
+            return jsonify({"error": "Active account workflow editing is not available"}), 503
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -322,7 +349,7 @@ def update_workflow(workflow_id):
     trigger_before = trigger_config(existing.nodes or []) if existing else {}
     was_active = bool(existing.is_active) if existing else False
 
-    workflow = update_workflow(workflow_id, **data)
+    workflow = update_workflow(workflow_id, owner_username=owner, **data)
     if not workflow:
         return jsonify({"error": "Workflow not found"}), 404
 
@@ -372,6 +399,15 @@ def update_workflow(workflow_id):
 @check_session_validity
 def delete_workflow(workflow_id):
     """Delete a workflow"""
+    owner = _flow_account_owner()
+    if owner is not None:
+        from database.flow_db import get_account_workflow
+        owned = get_account_workflow(workflow_id, owner)
+        if owned is None:
+            return jsonify({"error": "Workflow not found"}), 404
+        # Keep teardown of potentially armed legacy workflows disabled until
+        # account-owned triggers and subscription cleanup are migrated.
+        return jsonify({"error": "Account workflow deletion requires isolated trigger cleanup"}), 503
     from services.flow_executor_service import get_workflow_lock
 
     lock = get_workflow_lock(workflow_id)

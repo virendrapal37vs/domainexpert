@@ -510,3 +510,19 @@ Seven real SQLite tests cover cross-account reads, invalid owners, legacy rows
 and repeatable additive migration. This is a storage foundation only: existing
 Flow HTTP routes, updates, deletes, executions, webhook authentication, caches
 and trigger monitors are not fully migrated. The Flow feature guard stays on.
+
+### Flow CRUD ownership routing (feature still disabled)
+
+Create/list/detail/update route bodies now derive owner from the authenticated
+server account in per-account mode. Posted owner fields cannot select ownership;
+other-account or ownerless IDs return 404. Only inactive workflows can be edited.
+Database update/delete accept an explicit owner and filter by it when supplied.
+Account deletion checks ownership but still returns 503 for the owner: legacy
+scheduler/subscription cleanup has not been migrated. Existing legacy calls
+without explicit owner remain for internal migration and are not safe account APIs.
+The entire Flow feature guard remains enabled, so these routes are not exposed
+in restricted staging. Five additional HTTP tests deliberately bypass that outer
+guard and run actual route bodies against SQLite with graph validation stubbed;
+they verify identity, cross-account rejection, ignored owner fields, CSRF and
+anonymous rejection, as well as scoped database mutations. They do not certify
+workflow graph validation, armed trigger teardown, execution or live broker calls.

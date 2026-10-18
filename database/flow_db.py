@@ -276,10 +276,11 @@ def get_active_workflows():
         return []
 
 
-def update_workflow(workflow_id, **kwargs):
+def update_workflow(workflow_id, *, owner_username=None, **kwargs):
     """Update workflow fields"""
     try:
-        workflow = get_workflow(workflow_id)
+        workflow = (get_account_workflow(workflow_id, owner_username)
+                    if owner_username is not None else get_workflow(workflow_id))
         if not workflow:
             return None
 
@@ -317,10 +318,11 @@ def update_workflow(workflow_id, **kwargs):
         return None
 
 
-def delete_workflow(workflow_id):
+def delete_workflow(workflow_id, *, owner_username=None):
     """Delete workflow and its executions"""
     try:
-        workflow = get_workflow(workflow_id)
+        workflow = (get_account_workflow(workflow_id, owner_username)
+                    if owner_username is not None else get_workflow(workflow_id))
         if not workflow:
             return False
 
