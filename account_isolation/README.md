@@ -377,3 +377,17 @@ Two actual transport tests cover already-open revoked/expired clients and anothe
 account remaining connected. This is delivery-time validation, not an idle socket
 expiry timer. It covers these account emit helpers, not every legacy direct emit,
 Groww proxy transport or multiple server processes. No schema/frontend changes.
+
+### Proxy authentication commit and order-update ownership
+
+In per-user mode WebSocketProxy now commits user_mapping only after adapter
+initialization/connection succeeds. Failed broker setup cannot grant order-update
+subscription access. An already-authenticated connection must reconnect rather
+than switch identity while old subscriptions remain. Order-update fan-out also
+requires the client's current mapped owner to match the event owner, even if a
+stale subscriber set contains another account's client id. Four tests execute
+real async method bodies with fake adapters/sockets, including failed auth plus
+subscription refusal, delayed identity commit and payload-owner spoof resistance.
+No Groww handshake or actual proxy server runs in these tests. Ongoing API-key/
+broker-token revocation on existing proxy connections remains pending; keep
+restricted staging and disabled account-mode flag. No schema/frontend changes.

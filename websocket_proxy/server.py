@@ -877,6 +877,12 @@ class WebSocketProxy:
             client_id: ID of the client
             data: Authentication data containing API key
         """
+        from database.account_broker_db import per_user_groww_enabled
+        account_scoped = per_user_groww_enabled()
+        if account_scoped and client_id in self.user_mapping:
+            await self.send_error(client_id, "REAUTHENTICATION_REQUIRES_RECONNECT",
+                                  "Reconnect before authenticating again")
+            return
         # Accept both 'api_key' and 'apikey' formats for compatibility
         api_key = data.get("api_key") or data.get("apikey")
 
@@ -891,8 +897,9 @@ class WebSocketProxy:
             await self.send_error(client_id, "AUTHENTICATION_ERROR", "Invalid API key")
             return
 
-        # Store the user mapping
-        self.user_mapping[client_id] = user_id
+        # Per-account clients become authenticated only after adapter success.
+        if not account_scoped:
+            self.user_mapping[client_id] = user_id
 
         # Get broker name
         broker_name = get_broker_name(api_key)
@@ -1110,6 +1117,9 @@ class WebSocketProxy:
                     logger.exception(f"Broker error for {broker_name}: {error_str}")
                     await self.send_error(client_id, "BROKER_ERROR", error_str)
                     return
+
+        if account_scoped:
+            self.user_mapping[client_id] = user_id
 
         # Send success response with broker information
         await self.send_message(
@@ -1891,7 +1901,7 @@ class WebSocketProxy:
         send_tasks = [
             self.send_message(client_id, message)
             for client_id in list(client_ids)
-            if client_id in self.clients
+            if client_id in self.clients and self.user_mapping.get(client_id) == user_id
         ]
         if send_tasks:
             await aio.gather(*send_tasks, return_exceptions=True)
