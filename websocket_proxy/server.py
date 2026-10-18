@@ -1498,7 +1498,19 @@ class WebSocketProxy:
         if not owns_subscription:
             return True, None
 
-        if owners - {client_id}:
+        from database.account_broker_db import per_user_groww_enabled
+        other_owners = owners - {client_id}
+        if per_user_groww_enabled():
+            owner = self.user_mapping.get(client_id)
+            if not owner or self.broker_adapters.get(owner) is not adapter:
+                return False, "Account adapter ownership could not be verified"
+            # The index is shared across accounts, but broker subscriptions
+            # are owned by the adapter for this account only.
+            other_owners = {
+                cid for cid in other_owners
+                if cid in self.clients and self.user_mapping.get(cid) == owner
+            }
+        if other_owners:
             self._drop_subscription_ownership(client_id, sub_key, stored_rows)
             return True, None
 

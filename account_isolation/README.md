@@ -434,3 +434,15 @@ migrated and their unwrapped ticks are dropped in account mode. The ZMQ channel
 remains a trusted internal process boundary, not a signed transport.
 Nine synthetic tests cover envelope validation, legacy payloads and actual
 listener routing for two accounts; live Groww transport and load remain untested.
+
+### Account subscription release
+
+In per-user mode, only another live socket belonging to the same account keeps
+that account adapter's exact broker subscription alive. An unrelated account in
+the global symbol index no longer suppresses broker unsubscribe. The adapter
+must match the caller's mapped account before release. Failed broker acknowledgments
+retain local ownership for retry; disconnect still purges the disconnected
+socket and retains the other account's adapter, order subscribers and auth stamp.
+Seven fake-adapter tests exercise actual release and disconnect methods, including
+same-account sharing, different-account sharing, wrong adapters, failed releases,
+stale socket rows and legacy behavior. Live pooled broker cleanup remains untested.
