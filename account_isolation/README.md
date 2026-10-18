@@ -391,3 +391,21 @@ subscription refusal, delayed identity commit and payload-owner spoof resistance
 No Groww handshake or actual proxy server runs in these tests. Ongoing API-key/
 broker-token revocation on existing proxy connections remains pending; keep
 restricted staging and disabled account-mode flag. No schema/frontend changes.
+
+### Proxy fresh-auth state validation
+
+Per-user proxy auth now verifies the presented key against the owner's current
+Argon2 DB hash (not only cache) and fingerprints that hash plus decrypted broker
+token and broker name. Only the fingerprint is retained per connection/adapter.
+Same-token re-encryption preserves the fingerprint. Adapter credentials changing
+forces the cached adapter rebuild; auth-state changes during setup refuse binding.
+Protected outgoing messages and mapped incoming actions re-read auth state via
+asyncio.to_thread. Missing/revoked auth, removed keys/users or rotation closes that
+socket before delivery/action; normal socket teardown cleans resources and stamps.
+Eight tests use real SQLite auth/key rows plus fake proxy sockets and cover exact
+owner verification, revocation/rotation, stable re-encryption and action/delivery
+refusal with another owner unaffected. No real proxy/Groww handshake is tested.
+Every protected send incurs DB validation; throughput/load and connection setup/
+teardown races still require integration verification. Idle clients close on their
+next action/delivery, not a periodic sweep. No DB schema/frontend changes. Keep
+restricted staging active and account-mode flag off.

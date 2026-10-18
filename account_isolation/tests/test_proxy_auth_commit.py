@@ -25,7 +25,9 @@ def method(name, env):
 def proxy(monkeypatch):
     monkeypatch.setenv('DOMAINXPERT_PER_USER_GROWW', 'true')
     monkeypatch.setitem(sys.modules, 'database.account_broker_db', SimpleNamespace(per_user_groww_enabled=lambda: True))
+    monkeypatch.setitem(sys.modules, 'utils.proxy_auth_state', SimpleNamespace(proxy_auth_stamp=lambda *args: 'synthetic-stamp'))
     return SimpleNamespace(user_mapping={}, user_broker_mapping={}, broker_adapters={},
+                           client_auth_stamps={}, adapter_auth_stamps={},
                            send_error=AsyncMock(), send_message=AsyncMock(),
                            order_subscribers=defaultdict(set), clients={})
 
@@ -33,7 +35,7 @@ def proxy(monkeypatch):
 def test_failed_adapter_does_not_authenticate_or_allow_orders(proxy):
     adapter = Mock()
     adapter.initialize.return_value = {'status': 'error', 'message': 'Synthetic init refusal'}
-    env = {'verify_api_key': lambda key: 'alice', 'get_broker_name': lambda key: 'groww',
+    env = {'aio': asyncio, 'verify_api_key': lambda key: 'alice', 'get_broker_name': lambda key: 'groww',
            'create_broker_adapter': lambda broker: adapter, 'logger': Mock()}
     asyncio.run(method('authenticate_client', env)(proxy, 1, {'api_key': 'fake-key'}))
     assert 1 not in proxy.user_mapping
@@ -51,7 +53,7 @@ def test_success_binds_verified_owner_only_after_connect(proxy):
         assert 1 not in proxy.user_mapping
         return {'status': 'success'}
     adapter.connect.side_effect = connect
-    env = {'verify_api_key': lambda key: 'alice', 'get_broker_name': lambda key: 'groww',
+    env = {'aio': asyncio, 'verify_api_key': lambda key: 'alice', 'get_broker_name': lambda key: 'groww',
            'create_broker_adapter': lambda broker: adapter, 'logger': Mock()}
     asyncio.run(method('authenticate_client', env)(proxy, 1, {'api_key': 'fake-key', 'user_id': 'bob'}))
     assert proxy.user_mapping[1] == 'alice'

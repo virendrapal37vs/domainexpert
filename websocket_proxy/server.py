@@ -68,6 +68,8 @@ class WebSocketProxy:
         self.subscriptions = {}  # Maps client_id to set of subscriptions
         self.broker_adapters = {}  # Maps user_id to broker adapter
         self.user_mapping = {}  # Maps client_id to user_id
+        self.client_auth_stamps = {}
+        self.adapter_auth_stamps = {}
         self.user_broker_mapping = {}  # Maps user_id to broker_name
         self.running = False
 
@@ -742,6 +744,7 @@ class WebSocketProxy:
                 finally:
                     self.broker_adapters.pop(user_id, None)
                     self.user_broker_mapping.pop(user_id, None)
+                    self.adapter_auth_stamps.pop(user_id, None)
 
         elif release_failed:
             # Another live client still owns this user's shared adapter.  The
@@ -756,6 +759,7 @@ class WebSocketProxy:
 
         self._purge_client_subscription_ownership(client_id)
         self.user_mapping.pop(client_id, None)
+        self.client_auth_stamps.pop(client_id, None)
 
     async def process_client_message(self, client_id, message):
         """
@@ -772,6 +776,9 @@ class WebSocketProxy:
 
             # Accept both 'action' and 'type' fields for better compatibility with different clients
             action = data.get("action") or data.get("type")
+            if action not in ("authenticate", "auth") and client_id in self.user_mapping:
+                if not await self._account_authorized(client_id):
+                    return
             # OPTIMIZATION: Only log important actions, not every subscribe/unsubscribe
             if action not in ["subscribe", "unsubscribe"]:
                 logger.info(f"Client {client_id} requested action: {action}")
@@ -910,6 +917,13 @@ class WebSocketProxy:
             )
             return
 
+        auth_stamp = None
+        if account_scoped:
+            from utils.proxy_auth_state import proxy_auth_stamp
+            auth_stamp = await aio.to_thread(proxy_auth_stamp, user_id, broker_name, api_key)
+            if not auth_stamp:
+                await self.send_error(client_id, "AUTHENTICATION_ERROR", "Account credentials are inactive")
+                return
         previous_broker_name = self.user_broker_mapping.get(user_id)
 
         # Store the broker mapping for this user
@@ -924,10 +938,12 @@ class WebSocketProxy:
             cached_connected = bool(getattr(cached_adapter, "connected", False))
             broker_changed = bool(previous_broker_name and previous_broker_name != broker_name)
 
-            if broker_changed or not cached_connected:
+            credential_changed = account_scoped and self.adapter_auth_stamps.get(user_id) != auth_stamp
+            if broker_changed or not cached_connected or credential_changed:
                 reason = (
                     f"broker changed {previous_broker_name}->{broker_name}"
                     if broker_changed
+                    else "account credentials changed" if credential_changed
                     else "cached adapter disconnected"
                 )
                 logger.info(
@@ -1119,6 +1135,12 @@ class WebSocketProxy:
                     return
 
         if account_scoped:
+            current_stamp = await aio.to_thread(proxy_auth_stamp, user_id, broker_name)
+            if current_stamp != auth_stamp:
+                await self.send_error(client_id, "AUTHENTICATION_ERROR", "Account credentials changed during connection")
+                return
+            self.client_auth_stamps[client_id] = auth_stamp
+            self.adapter_auth_stamps[user_id] = auth_stamp
             self.user_mapping[client_id] = user_id
 
         # Send success response with broker information
@@ -1743,6 +1765,22 @@ class WebSocketProxy:
             response["request_id"] = request_id
         await self.send_message(client_id, response)
 
+    async def _account_authorized(self, client_id):
+        from database.account_broker_db import per_user_groww_enabled
+        if not per_user_groww_enabled():
+            return True
+        from utils.proxy_auth_state import proxy_auth_stamp
+        owner = self.user_mapping.get(client_id)
+        expected = self.client_auth_stamps.get(client_id)
+        broker = self.user_broker_mapping.get(owner)
+        current = await aio.to_thread(proxy_auth_stamp, owner, broker) if owner and expected and broker else None
+        if current and current == expected:
+            return True
+        websocket = self.clients.get(client_id)
+        if websocket is not None:
+            await websocket.close(code=1008, reason="Account authentication revoked or changed")
+        return False
+
     async def send_message(self, client_id, message):
         """
         Send a message to a client
@@ -1752,6 +1790,8 @@ class WebSocketProxy:
             message: The message to send
         """
         if client_id in self.clients:
+            if client_id in self.user_mapping and not await self._account_authorized(client_id):
+                return
             websocket = self.clients[client_id]
             try:
                 await websocket.send(json.dumps(message))
