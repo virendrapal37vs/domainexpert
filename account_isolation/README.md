@@ -446,3 +446,14 @@ socket and retains the other account's adapter, order subscribers and auth stamp
 Seven fake-adapter tests exercise actual release and disconnect methods, including
 same-account sharing, different-account sharing, wrong adapters, failed releases,
 stale socket rows and legacy behavior. Live pooled broker cleanup remains untested.
+
+### Account subscription creation checks
+
+The existing subscribe handler already selects the adapter through the
+server's authenticated client-to-account mapping. Five additional tests execute
+that handler with two independent fake adapters: same-symbol creation reaches
+both adapters, supplied owner/broker fields cannot choose another adapter,
+missing own adapters never fall back to another account, failed requests do not
+change the other account's registry, and anonymous requests are rejected.
+No subscription-handler behavior changed. These tests do not exercise the live
+Groww adapter or connection-pool subscription bookkeeping.
