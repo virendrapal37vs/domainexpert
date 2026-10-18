@@ -335,3 +335,15 @@ checks but is not a full running-app broker integration test.
 In per-user mode /analyzer/clear now requires POST (GET returns 405), with global
 CSRF protection. Legacy mode still accepts the old GET. POST deletes only the
 owner's rows older than 24 hours. No schema migration is added by this patch.
+
+### Actual Socket.IO test-client delivery
+
+Five transport tests run Flask-SocketIO test clients with the real account room
+connect handler, emit helpers and order subscriber module. They verify own-only
+order and Action Center delivery, ignored auth-payload usernames, anonymous/
+unknown/non-broker-session connection rejection and dropped invalid-key events.
+Synthetic API keys and Flask test sessions are used; this is not a Groww stream
+or full app socket middleware test. The subscriber source module is loaded
+without the package initializer to avoid starting unrelated messaging adapters.
+Logout/revocation, session expiry and market-data proxy ownership remain pending.
+The test environment now requires Flask-SocketIO; production deps are unchanged.
