@@ -235,6 +235,32 @@ def _execution_status_code(result: dict) -> int:
     return 200
 
 
+def _account_flow_run_error(workflow, api_key):
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if not shared_strategy_disabled():
+        return None
+    from utils.flow_execution_owner import validate_flow_execution_owner
+    try:
+        validate_flow_execution_owner(workflow.id, api_key)
+    except ValueError:
+        return {"status": "error", "code": "FLOW_OWNER_AUTH_FAILED",
+                "message": "Workflow account credentials are inactive or mismatched."}
+    return {"status": "error", "code": "FLOW_ACCOUNT_ISOLATION_PENDING",
+            "message": "Account-owned Flow execution is not available."}
+
+
+def _account_flow_request_block(workflow_id):
+    owner = _flow_account_owner()
+    if owner is None:
+        return None
+    from database.flow_db import get_account_workflow
+    workflow = get_account_workflow(workflow_id, owner)
+    if workflow is None:
+        return jsonify({"error": "Workflow not found"}), 404
+    error = _account_flow_run_error(workflow, get_current_api_key())
+    return jsonify(error), 403 if error["code"] == "FLOW_OWNER_AUTH_FAILED" else 503
+
+
 def _run_or_start(workflow, **kwargs):
     """Execute a triggered workflow, on this request or, if it waits, on the pool.
 
@@ -247,6 +273,9 @@ def _run_or_start(workflow, **kwargs):
     request exactly as before, so TradingView still gets the broker's answer.
     A workflow with no wait, or a short one, always runs on its request.
     """
+    blocked = _account_flow_run_error(workflow, kwargs.get("api_key"))
+    if blocked:
+        return blocked
     from services.flow_executor_service import (
         execute_workflow,
         start_workflow_in_background,
@@ -606,6 +635,9 @@ def _rollback_activation(workflow_id):
 @check_session_validity
 def activate_workflow(workflow_id):
     """Activate a workflow"""
+    blocked = _account_flow_request_block(workflow_id)
+    if blocked is not None:
+        return blocked
     from database.flow_db import activate_workflow as db_activate
     from database.flow_db import get_workflow, set_schedule_job_id
     from services.flow_order_update_monitor_service import get_flow_order_update_monitor
@@ -781,6 +813,9 @@ def _execution_blocked(workflow):
 @check_session_validity
 def execute_workflow_now(workflow_id):
     """Execute a workflow immediately"""
+    blocked = _account_flow_request_block(workflow_id)
+    if blocked is not None:
+        return blocked
     from database.flow_db import get_workflow
 
     workflow = get_workflow(workflow_id)
@@ -1127,6 +1162,10 @@ def _execute_webhook(token, webhook_data=None, url_secret=None):
     data = webhook_data or {}
     auth_type = workflow.webhook_auth_type or "payload"
 
+    from utils.strategy_account_guard import shared_strategy_disabled
+    account_scoped = shared_strategy_disabled()
+    if account_scoped and not workflow.webhook_secret:
+        return jsonify({"error": "Webhook requires a configured secret"}), 401
     # Validate webhook secret based on auth type
     if workflow.webhook_secret:
         if auth_type == "url":
@@ -1163,9 +1202,9 @@ def _execute_webhook(token, webhook_data=None, url_secret=None):
     # (and falls back to plaintext for pre-migration rows).
     from database.flow_db import get_workflow_api_key
     api_key = get_workflow_api_key(workflow)  # Use API key stored when workflow was activated
-    if not api_key:
-        api_key = get_current_api_key()  # Fallback to session (if called from UI)
-    if not api_key:
+    if not api_key and not account_scoped:
+        api_key = get_current_api_key()  # Legacy UI fallback only
+    if not api_key and not account_scoped:
         api_key = os.getenv("OPENALGO_API_KEY")  # Fallback to environment variable
 
     if not api_key:

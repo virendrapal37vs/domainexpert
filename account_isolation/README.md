@@ -582,3 +582,17 @@ Background and internal locked execution entry points now explicitly refuse
 account-mode runs before pools, execution rows or broker calls; existing outer
 Flow guards remain. This does not verify order placement or credential changes
 mid-run, and no live broker request was made.
+
+### Flow run/trigger owner routing (still blocked)
+
+Run Now and activate route bodies now check the authenticated account's workflow
+before accessing trigger services. The common _run_or_start boundary invokes the
+fresh owner validator with the exact workflow ID and presented key, then still
+returns FLOW_ACCOUNT_ISOLATION_PENDING for valid account credentials. Invalid
+credentials return a generic owner-auth failure. Account webhooks require a
+configured secret and cannot borrow a browser-session/environment API key when
+the stored key is missing. Legacy fallback remains with account flags off.
+Eight boundary tests exercise real route/helper bodies with validator stubs;
+fresh credential validation has separate real SQLite tests. These are not a
+live trigger/executor integration test. Outer Flow guards and internal execution
+guards remain enabled; scheduler/monitor execution wiring remains pending.
