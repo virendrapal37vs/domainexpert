@@ -285,6 +285,8 @@ def _forget_released_subscription(workflow_id: int, entry, version: int) -> None
 
 def _release_shared_workflow_owner(workflow_id: int, entry, version: int, username: str) -> bool:
     """Drop this owner's claim without touching a feed another Flow still uses."""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    fallback = (None, "") if shared_strategy_disabled() else (username, "")
     with _workflow_subscriptions_lock:
         if _workflow_subscription_versions.get(workflow_id, {}).get(entry) != version:
             # A new subscribe for this same workflow took over the key while
@@ -294,7 +296,7 @@ def _release_shared_workflow_owner(workflow_id: int, entry, version: int, userna
             other_id != workflow_id
             and entry in other_entries
             and (
-                _workflow_subscription_owners.get(other_id, {}).get(entry, (username, ""))[0]
+                _workflow_subscription_owners.get(other_id, {}).get(entry, fallback)[0]
                 == username
             )
             for other_id, other_entries in _workflow_subscriptions.items()
@@ -312,12 +314,18 @@ def _release_shared_workflow_owner(workflow_id: int, entry, version: int, userna
         return True
 
 
-def release_workflow_subscriptions(workflow_id: int) -> int:
+def release_workflow_subscriptions(workflow_id: int, *, owner_username: str | None = None) -> int:
     """Release subscriptions, retaining failures for a later retry.
 
     Called when a workflow is deactivated or deleted. Safe to call for a
     workflow that never subscribed, and safe to call twice.
     """
+    from utils.strategy_account_guard import shared_strategy_disabled
+    account_scoped = shared_strategy_disabled()
+    if account_scoped:
+        from database.flow_db import get_account_workflow
+        if not owner_username or get_account_workflow(workflow_id, owner_username) is None:
+            raise ValueError("Workflow subscription cleanup requires its verified owner")
     with _workflow_subscriptions_lock:
         entries = list(_workflow_subscriptions.get(workflow_id, ()))
         versions = dict(_workflow_subscription_versions.get(workflow_id, {}))
@@ -333,12 +341,17 @@ def release_workflow_subscriptions(workflow_id: int) -> int:
 
     # Legacy records lack a captured owner. Resolve only once for those; new
     # records keep their owner even if the workflow's API key later changes.
-    fallback_owner = _subscription_owner(workflow_id) if len(owners) < len(entries) else (None, "")
+    fallback_owner = (_subscription_owner(workflow_id)
+                      if not account_scoped and len(owners) < len(entries) else (None, ""))
 
     released = 0
     for entry in entries:
         symbol, exchange, mode = entry
         username, broker = owners.get(entry, fallback_owner)
+        if account_scoped and (username != owner_username or not broker or broker == "unknown"):
+            # Unowned or conflicting records stay available for explicit repair.
+            # Never borrow a browser session, current token, or another owner.
+            continue
         if not username:
             # Legacy unowned bookkeeping from a lost session has no client to
             # unsubscribe. Do not keep an unretryable workflow entry forever.

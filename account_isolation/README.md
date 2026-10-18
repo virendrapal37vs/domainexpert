@@ -526,3 +526,16 @@ guard and run actual route bodies against SQLite with graph validation stubbed;
 they verify identity, cross-account rejection, ignored owner fields, CSRF and
 anonymous rejection, as well as scoped database mutations. They do not certify
 workflow graph validation, armed trigger teardown, execution or live broker calls.
+
+### Flow subscription cleanup ownership
+
+In account mode release_workflow_subscriptions now requires explicit
+owner_username matching the workflow row before reading the registry. Each
+subscription must have that captured owner and a known broker. Missing or
+conflicting records are retained for repair; the current-key/session fallback
+is not used. Another ownerless workflow no longer falsely suppresses account
+unsubscribe. A same-owner workflow still retains its shared feed. Ten synthetic
+registry tests execute real cleanup bodies, including failure/retry retention.
+This is a prerequisite only: callers, scheduler/price/order-monitor cleanup and
+delete orchestration are not yet migrated. Flow/deletion guards remain enabled.
+No live unsubscribe transport was exercised.
