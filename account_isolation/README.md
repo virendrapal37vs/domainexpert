@@ -498,3 +498,15 @@ bots must be stopped before deployment; restricted staging never starts them.
 Eleven synthetic tests cover HTTP guards, sync startup/pairing, order alerts,
 broadcast alerts, direct WhatsApp reports and legacy HTTP behavior. Live
 messaging and inbound callbacks are not tested; no external messages were sent.
+
+### Flow ownership storage foundation
+
+FlowWorkflow now has a nullable owner_username. Startup adds the column to old
+schemas without assigning legacy rows. In account mode create_workflow requires
+an explicit existing username; account-scoped list/id lookup helpers filter the
+owner in SQL and reject missing/unknown owners. Legacy creation with account
+flags off may still create ownerless rows, which account lookups cannot see.
+Seven real SQLite tests cover cross-account reads, invalid owners, legacy rows
+and repeatable additive migration. This is a storage foundation only: existing
+Flow HTTP routes, updates, deletes, executions, webhook authentication, caches
+and trigger monitors are not fully migrated. The Flow feature guard stays on.

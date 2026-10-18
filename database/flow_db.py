@@ -83,6 +83,7 @@ class FlowWorkflow(Base):
     __tablename__ = "flow_workflows"
 
     id = Column(Integer, primary_key=True, index=True)
+    owner_username = Column(String(255), nullable=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     nodes = Column(JSON, default=list)
@@ -130,6 +131,7 @@ def init_db():
 
     # Migrate: Add api_key column if it doesn't exist (for existing databases)
     _migrate_add_api_key_column()
+    migrate_workflow_owner_column()
 
 
 def _migrate_add_api_key_column():
@@ -166,11 +168,43 @@ def _migrate_add_api_key_column():
 # --- Workflow CRUD Operations ---
 
 
-def create_workflow(name, description=None, nodes=None, edges=None):
-    """Create a new workflow"""
+def migrate_workflow_owner_column():
+    """Add nullable ownership without assigning legacy workflows to any user."""
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    if "flow_workflows" not in inspector.get_table_names():
+        return
+    if "owner_username" not in {c["name"] for c in inspector.get_columns("flow_workflows")}:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE flow_workflows ADD COLUMN owner_username VARCHAR(255)"))
+
+
+def _verified_workflow_owner(username):
+    from database.user_db import find_user_by_exact_username
+    if not isinstance(username, str) or not username or find_user_by_exact_username(username) is None:
+        raise ValueError("An existing workflow owner is required")
+    return username
+
+
+def get_account_workflow(workflow_id, username):
+    owner = _verified_workflow_owner(username)
+    return FlowWorkflow.query.filter_by(id=workflow_id, owner_username=owner).populate_existing().first()
+
+
+def get_account_workflows(username):
+    owner = _verified_workflow_owner(username)
+    return FlowWorkflow.query.filter_by(owner_username=owner).populate_existing().order_by(FlowWorkflow.updated_at.desc()).all()
+
+
+def create_workflow(name, description=None, nodes=None, edges=None, *, owner_username=None):
+    """Create a workflow; account mode requires an explicit verified owner."""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if owner_username is not None or shared_strategy_disabled():
+        owner_username = _verified_workflow_owner(owner_username)
     try:
         workflow = FlowWorkflow(
-            name=name, description=description, nodes=nodes or [], edges=edges or []
+            name=name, description=description, nodes=nodes or [], edges=edges or [],
+            owner_username=owner_username
         )
         db_session.add(workflow)
         db_session.commit()
