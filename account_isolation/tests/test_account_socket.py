@@ -37,12 +37,14 @@ def test_connection_uses_session_account_not_payload(monkeypatch):
     monkeypatch.setattr('utils.account_socket.socket_session_active', lambda username: True)
     socket = Mock()
     register_account_socket(socket)
-    handler = socket.on_event.call_args.args[1]
+    handler = next(call.args[1] for call in socket.on_event.call_args_list if call.args[0] == 'connect')
     app = Flask(__name__)
     app.secret_key = 'synthetic'
     with app.test_request_context('/'):
         assert handler({'username': 'alice'}) is False
         session.update(user='alice', logged_in=True)
+        from flask import request
+        request.sid = 'synthetic-sid'
         handler({'username': 'bob'})
         join.assert_called_once_with(room_for('alice'))
 

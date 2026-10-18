@@ -364,3 +364,16 @@ These tests call the notification helper after real DB revocation; they are not
 full HTTP password-reset/logout tests. Continuous expiry checks for already-open
 sockets, cross-process notification and Groww proxy revocation remain pending.
 Restart staging to load application changes; no DB migration/frontend build.
+
+### Private-delivery session validation
+
+Root Socket.IO connections now keep only owner/session_id/expiry metadata in a
+per-server registry, removed on disconnect. Before order/Action Center/session
+count payload delivery, expired recipients and those without their matching
+ActiveSession row are disconnected. Database validation errors fail closed for
+that recipient. force_logout itself is sent to the owner's room before closing
+it, so the non-sensitive logout message can still arrive after DB revocation.
+Two actual transport tests cover already-open revoked/expired clients and another
+account remaining connected. This is delivery-time validation, not an idle socket
+expiry timer. It covers these account emit helpers, not every legacy direct emit,
+Groww proxy transport or multiple server processes. No schema/frontend changes.

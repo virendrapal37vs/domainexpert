@@ -126,3 +126,27 @@ def test_expired_cookie_cannot_join_private_room(transport):
                        login_time=(datetime.now(timezone.utc) - timedelta(days=2)).isoformat())
     expired = socket.test_client(app, flask_test_client=http)
     assert not expired.is_connected()
+
+
+def test_already_revoked_recipient_dropped_before_private_delivery(transport):
+    app, socket, clients, _http, subscriber = transport
+    auth = importlib.import_module('database.auth_db')
+    auth.clear_user_sessions('alice')
+    subscriber.on_order_placed(event('alice'))
+    assert not clients['alice'].is_connected()
+    assert clients['bob'].is_connected()
+    assert clients['bob'].get_received() == []
+    subscriber.on_order_placed(event('bob'))
+    assert clients['bob'].get_received()[0]['args'][0]['orderid'] == 'bob-order'
+
+
+def test_already_expired_recipient_dropped_before_private_delivery(transport):
+    _app, socket, clients, _http, subscriber = transport
+    with socket._account_connection_lock:
+        for identity in socket._account_connections.values():
+            if identity['username'] == 'alice':
+                identity['expires_at'] = 0
+    subscriber.on_order_placed(event('alice'))
+    assert not clients['alice'].is_connected()
+    assert clients['bob'].is_connected()
+    assert clients['bob'].get_received() == []

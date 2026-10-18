@@ -1,6 +1,9 @@
 """Account-scoped delivery for order-event subscribers."""
 import hashlib
 import os
+import threading
+from datetime import datetime, timedelta
+import pytz
 
 
 def enabled():
@@ -24,12 +27,15 @@ def emit_order(socketio, event, name, payload):
     username = get_username_by_apikey(api_key)
     if not username:
         return
+    prune_account_sockets(socketio, username)
     socketio.emit(name, payload, to=room_for(username), namespace='/')
 
 
 def register_account_socket(socketio):
-    from flask import session
+    from flask import session, request
     from flask_socketio import join_room
+    socketio._account_connections = {}
+    socketio._account_connection_lock = threading.RLock()
 
     def connect(auth=None):
         if not enabled():
@@ -39,9 +45,19 @@ def register_account_socket(socketio):
         if account is None or not session.get('logged_in') or not socket_session_active(account.username):
             return False
         join_room(room_for(account.username))
+        with socketio._account_connection_lock:
+            socketio._account_connections[request.sid] = {
+                'username': account.username, 'session_id': session.get('session_id'),
+                'expires_at': socket_expiry_deadline(),
+            }
         return None
 
+    def disconnected(reason=None):
+        with socketio._account_connection_lock:
+            socketio._account_connections.pop(request.sid, None)
+
     socketio.on_event('connect', connect, namespace='/')
+    socketio.on_event('disconnect', disconnected, namespace='/')
 
 
 def emit_account(socketio, username, name, payload):
@@ -51,6 +67,7 @@ def emit_account(socketio, username, name, payload):
         return
     if not isinstance(username, str) or not username:
         return
+    prune_account_sockets(socketio, username)
     socketio.emit(name, payload, to=room_for(username), namespace='/')
 
 
@@ -78,8 +95,55 @@ def emit_session_event(socketio, username, name, payload):
         return
     if not isinstance(username, str) or not username:
         return
-    emit_account(socketio, username, name, payload)
+    if name != 'force_logout':
+        emit_account(socketio, username, name, payload)
+        return
+    # This non-sensitive logout message precedes disconnect even after the DB
+    # session was revoked; normal private payloads still require validation.
+    socketio.emit(name, payload, to=room_for(username), namespace='/')
     if name == 'force_logout':
         participants = list(socketio.server.manager.get_participants('/', room_for(username)))
         for sid, _engine_sid in participants:
             socketio.server.disconnect(sid, namespace='/')
+
+
+def socket_expiry_deadline():
+    """Next configured IST rollover, after connect already checked login time."""
+    if os.getenv('DISABLE_SESSION_EXPIRY', 'false').lower() == 'true':
+        return None
+    now = datetime.now(pytz.timezone('Asia/Kolkata'))
+    hour, minute = map(int, os.getenv('SESSION_EXPIRY_TIME', '03:00').split(':'))
+    deadline = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if now >= deadline:
+        deadline += timedelta(days=1)
+    return deadline.timestamp()
+
+
+def prune_account_sockets(socketio, username):
+    """Before private delivery, disconnect expired/revoked recipients only."""
+    connections = getattr(socketio, '_account_connections', None)
+    if not isinstance(connections, dict):
+        return
+    with socketio._account_connection_lock:
+        candidates = [(sid, dict(identity)) for sid, identity in connections.items()
+                      if identity['username'] == username]
+    from database.auth_db import ActiveSession, db_session
+    invalid = []
+    now = datetime.now(pytz.UTC).timestamp()
+    try:
+        for sid, identity in candidates:
+            try:
+                deadline = identity['expires_at']
+                active = deadline is None or now < deadline
+                if active:
+                    active = bool(ActiveSession.query.filter_by(
+                        username=username, session_id=identity['session_id']).first())
+            except Exception:
+                # DB validation failure must not permit private payload delivery.
+                active = False
+            if not active:
+                invalid.append(sid)
+    finally:
+        db_session.remove()
+    for sid in invalid:
+        socketio.server.disconnect(sid, namespace='/')
