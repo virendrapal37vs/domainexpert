@@ -568,3 +568,17 @@ Existing CRUD route tests deliberately stub the delete dispatcher; they do not
 exercise a live HTTP-to-jobstore-to-broker deletion chain. Flow's outer feature
 and restricted-staging guards remain enabled. Activation/execution and monitors
 still need account migration before enabling the feature.
+
+### Flow execution owner validation foundation
+
+validate_flow_execution_owner checks a workflow's stored owner against the
+presented current API key using a fresh database hash/broker-auth verification.
+No stored-key, global-key or browser-session fallback is used. Ownerless/missing
+workflows, another account's key, rotated keys and revoked broker credentials
+are rejected. This currently supports Groww only. Eight tests cover fresh SQLite
+credential validation and explicit guards on background/internal execution.
+The validator is a foundation, not yet wired into an enabled trigger/run path.
+Background and internal locked execution entry points now explicitly refuse
+account-mode runs before pools, execution rows or broker calls; existing outer
+Flow guards remain. This does not verify order placement or credential changes
+mid-run, and no live broker request was made.

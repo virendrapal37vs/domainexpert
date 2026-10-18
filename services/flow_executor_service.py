@@ -4895,6 +4895,10 @@ def start_workflow_in_background(
         is taken, in which case nothing was started and the refusal is written
         to the workflow's execution history.
     """
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return {"status": "error", "code": "FLOW_ACCOUNT_ISOLATION_PENDING",
+                "message": "Account-owned Flow execution is not available."}
     from utils.shared_executors import get_executor
 
     if nodes is not None and workflow_wait_seconds(nodes)[1] > FLOW_INLINE_WAIT_SECONDS:
@@ -4960,6 +4964,10 @@ def _execute_workflow_locked(
     workflow_id: int, webhook_data: dict[str, Any] | None = None, api_key: str = None
 ) -> dict:
     """The body of execute_workflow. The caller holds the workflow's lock."""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return {"status": "error", "code": "FLOW_ACCOUNT_ISOLATION_PENDING",
+                "message": "Account-owned Flow execution is not available."}
     workflow = get_workflow(workflow_id)
     if not workflow:
         return {"status": "error", "message": "Workflow not found"}
