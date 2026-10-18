@@ -266,7 +266,7 @@ class FlowScheduler:
         logger.info(f"Added job {job_id}")
         return job_id
 
-    def remove_job(self, job_id: str, strict: bool = False) -> bool:
+    def remove_job(self, job_id: str, strict: bool = False, *, owner_username: str | None = None) -> bool:
         """Remove a job from the scheduler. Returns False if there was none.
 
         A job that does not exist is not an error for any caller: activating a
@@ -282,6 +282,16 @@ class FlowScheduler:
         it again. A missing job still returns False rather than raising, because
         that genuinely is the desired end state.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            from utils.flow_cleanup_owner import require_flow_cleanup_owner
+            prefix = "flow_workflow_"
+            if not isinstance(job_id, str) or not job_id.startswith(prefix):
+                raise ValueError("Only account-owned workflow jobs can be removed")
+            suffix = job_id[len(prefix):]
+            if not suffix.isascii() or not suffix.isdigit() or str(int(suffix)) != suffix:
+                raise ValueError("Invalid workflow scheduler job ID")
+            require_flow_cleanup_owner(int(suffix), owner_username)
         from apscheduler.jobstores.base import JobLookupError
 
         try:
@@ -297,10 +307,10 @@ class FlowScheduler:
                 raise
             return False
 
-    def remove_workflow_job(self, workflow_id: int, strict: bool = False) -> bool:
+    def remove_workflow_job(self, workflow_id: int, strict: bool = False, *, owner_username: str | None = None) -> bool:
         """Remove a workflow job. A job that is already gone is not a failure."""
         job_id = f"flow_workflow_{workflow_id}"
-        return self.remove_job(job_id, strict=strict)
+        return self.remove_job(job_id, strict=strict, owner_username=owner_username)
 
     def get_job(self, job_id: str):
         """Get a job by ID"""

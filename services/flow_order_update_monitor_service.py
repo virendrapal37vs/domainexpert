@@ -160,7 +160,9 @@ class FlowOrderUpdateMonitor:
             logger.exception("Could not resolve owner for order-update watch")
             return None
 
-    def remove_watch(self, workflow_id: int) -> bool:
+    def remove_watch(self, workflow_id: int, *, owner_username: str | None = None) -> bool:
+        from utils.flow_cleanup_owner import require_flow_cleanup_owner
+        require_flow_cleanup_owner(workflow_id, owner_username)
         with self._watches_lock:
             return self._watches.pop(workflow_id, None) is not None
 

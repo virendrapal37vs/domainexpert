@@ -539,3 +539,17 @@ registry tests execute real cleanup bodies, including failure/retry retention.
 This is a prerequisite only: callers, scheduler/price/order-monitor cleanup and
 delete orchestration are not yet migrated. Flow/deletion guards remain enabled.
 No live unsubscribe transport was exercised.
+
+### Flow trigger removal ownership
+
+Scheduler remove_job/remove_workflow_job, price remove_alert and order-update
+remove_watch now require an explicit verified workflow owner in account mode.
+Raw scheduler removal accepts only canonical flow_workflow_<id> job IDs and
+performs the same owner check. Validation runs before registration mutation;
+strict jobstore failures still propagate. Twelve tests combine real SQLite
+workflow owner lookup with fake scheduler/monitor stores and actual method bodies.
+This does not verify the persistent jobstore or live monitors. Existing internal
+callers have not all been migrated to pass owner_username, so Flow/deletion and
+restricted-staging guards must remain enabled. Legacy removal stays available
+with account flags off. Stale registrations for deleted/unowned workflows need
+explicit administrative repair rather than bypassing owner verification.

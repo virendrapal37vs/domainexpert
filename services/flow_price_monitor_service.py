@@ -162,8 +162,10 @@ class FlowPriceMonitor:
 
         return True
 
-    def remove_alert(self, workflow_id: int) -> bool:
+    def remove_alert(self, workflow_id: int, *, owner_username: str | None = None) -> bool:
         """Remove a price alert for a workflow"""
+        from utils.flow_cleanup_owner import require_flow_cleanup_owner
+        require_flow_cleanup_owner(workflow_id, owner_username)
         with self._alerts_lock:
             if workflow_id not in self._alerts:
                 return False
