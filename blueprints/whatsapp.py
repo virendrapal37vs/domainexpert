@@ -40,6 +40,14 @@ WHATSAPP_MESSAGE_RATE_LIMIT = os.getenv("WHATSAPP_MESSAGE_RATE_LIMIT", "10 per m
 
 whatsapp_bp = Blueprint("whatsapp_bp", __name__, url_prefix="/whatsapp")
 
+
+@whatsapp_bp.before_request
+def require_account_safe_bot():
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return jsonify({"status": "error", "code": "BOT_ACCOUNT_ISOLATION_PENDING",
+                        "message": "Messaging bots require verified account-owned delivery."}), 503
+
 #: What the send routes say when the bot cannot send and does not know why.
 NOT_READY_MESSAGE = "WhatsApp is not paired. Pair the device first to send messages."
 

@@ -307,6 +307,9 @@ class TelegramAlertService:
         Uses httpx.Client directly — no asyncio, no greenlet boundary crossing.
         Safe under Gunicorn + eventlet.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return False
         try:
             bot_token = self._get_bot_token()
             if not bot_token:
@@ -369,6 +372,9 @@ class TelegramAlertService:
             response: Order response
             api_key: API key to identify user
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return
         try:
             logger.info(
                 f"Telegram alert triggered for {order_type}, response: {response.get('status', 'unknown')}"
@@ -449,6 +455,9 @@ class TelegramAlertService:
 
     def send_broadcast_alert(self, message: str, filters: dict | None = None):
         """Send broadcast alert to multiple users"""
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return
         try:
             users = get_all_telegram_users(filters)
 

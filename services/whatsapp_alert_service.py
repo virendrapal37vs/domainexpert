@@ -270,6 +270,9 @@ class WhatsAppAlertService:
         to arrive in real time, not days later. Pair from the /whatsapp page
         first, and incoming order events will flow from then on.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return False
         from services.whatsapp_bot_service import whatsapp_bot_service
 
         if not whatsapp_bot_service.is_ready():
@@ -313,6 +316,9 @@ class WhatsAppAlertService:
         the username happens to have a row in `whatsapp_users` (e.g. a
         future multi-recipient deployment), honour it too.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return
         try:
             if not self.enabled:
                 return
@@ -374,6 +380,9 @@ class WhatsAppAlertService:
     ) -> tuple[int, int]:
         """Fan out `message` to every linked user matching `filters`.
         Returns (queued_count, skipped_count)."""
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return
         queued = 0
         skipped = 0
         try:

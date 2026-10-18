@@ -27,6 +27,14 @@ TELEGRAM_MESSAGE_RATE_LIMIT = os.getenv("TELEGRAM_MESSAGE_RATE_LIMIT", "10 per m
 telegram_bp = Blueprint("telegram_bp", __name__, url_prefix="/telegram")
 
 
+@telegram_bp.before_request
+def require_account_safe_bot():
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if shared_strategy_disabled():
+        return jsonify({"status": "error", "code": "BOT_ACCOUNT_ISOLATION_PENDING",
+                        "message": "Messaging bots require verified account-owned delivery."}), 503
+
+
 # No longer need run_async since we use the sync wrapper
 
 

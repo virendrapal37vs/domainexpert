@@ -646,6 +646,9 @@ class TelegramBotService:
         Returns:
             ``(success, message)``, as :meth:`initialize_bot_sync`.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return False, "Account-owned bot service is not available."
         return self.initialize_bot_sync(token)
 
     def initialize_bot_sync(self, token: str) -> tuple[bool, str]:
@@ -667,6 +670,9 @@ class TelegramBotService:
         Returns:
             ``(success, message)``, the message written for the trader.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return False, "Account-owned bot service is not available."
         from utils.httpx_client import get_httpx_client
 
         try:
@@ -977,6 +983,9 @@ class TelegramBotService:
         Returns:
             ``(success, message)``.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return False, "Account-owned bot service is not available."
         try:
             with self._lifecycle_lock:
                 busy = self._busy_answer()
@@ -2851,6 +2860,9 @@ class TelegramBotService:
 
     async def send_notification(self, telegram_id: int, message: str) -> bool:
         """Send a notification to a specific Telegram user."""
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return False
         try:
             if not self.application or not self.is_running:
                 logger.error("Bot not initialized or not running")
@@ -2868,6 +2880,9 @@ class TelegramBotService:
 
     async def broadcast_message(self, message: str, filters: dict = None) -> tuple[int, int]:
         """Broadcast a message to all or filtered users."""
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return 0, 0
         try:
             if not self.application or not self.is_running:
                 logger.error("Bot not initialized or not running for broadcast")

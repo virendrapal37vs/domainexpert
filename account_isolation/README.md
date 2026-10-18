@@ -483,3 +483,18 @@ implement per-account Flow, stop previously executing jobs or disable every
 monitor thread; use restricted staging where schedulers/adapters remain off.
 Six tests execute HTTP guard and direct/scheduled entry-point bodies with no
 live workflow execution. Bot configuration and notification ownership remain pending.
+
+### Messaging bot boundary
+
+Per-account mode rejects both complete Telegram and WhatsApp blueprints with
+BOT_ACCOUNT_ISOLATION_PENDING (503), including shared configuration and user
+lists. Bot startup/pairing/initialization entry points and outward notification,
+alert and broadcast entry points are guarded before shared state or recipient
+lookup. Thus failed API-key resolution cannot use the existing browser-session
+fallback to send an account alert in this mode. Legacy behavior is unchanged
+with both account flags off. This disables bots rather than implementing
+account-owned bots or a new administrator permission model. Existing running
+bots must be stopped before deployment; restricted staging never starts them.
+Eleven synthetic tests cover HTTP guards, sync startup/pairing, order alerts,
+broadcast alerts, direct WhatsApp reports and legacy HTTP behavior. Live
+messaging and inbound callbacks are not tested; no external messages were sent.

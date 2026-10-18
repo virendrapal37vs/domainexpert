@@ -500,6 +500,9 @@ class WhatsAppBotService:
         so the bot's command handlers can resolve the operator's api_key
         without any per-WhatsApp-user linking flow.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return False, "Account-owned bot service is not available."
         with self._lock:
             if self._pair_state["status"] in ("starting", "awaiting_scan"):
                 return False, "Pairing already in progress"
@@ -782,6 +785,9 @@ class WhatsAppBotService:
         Returns:
             ``(success, message)``.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return False, "Account-owned bot service is not available."
         retire: _BotGeneration | None = None
         with self._lock:
             live = self._live_generation()
@@ -1208,6 +1214,9 @@ class WhatsAppBotService:
              "failed": [{"to": <jid>, "error": "<msg>"}, ...],
              "skipped": int}
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            return {"sent": [], "failed": [{"to": None, "error": "Account-owned bot service is not available."}], "skipped": 0}
         result_holder: dict[str, Any] = {}
         event = threading.Event()
         command = (
