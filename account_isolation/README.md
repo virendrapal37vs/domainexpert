@@ -420,3 +420,17 @@ These fake-adapter method tests cover failed initialization, credential changes,
 socket removal during the final read, successful setup, and another socket
 adopting the adapter. They do not verify a live broker handshake or certify all
 concurrent setup, connection-pool, and teardown behavior.
+
+### Account market-data delivery
+
+With per-user Groww enabled, the Groww adapter wraps ticks with its own account
+identity. The proxy drops unwrapped/malformed ticks and sends valid ticks only
+to subscribed sockets mapped to that owner. Client payload owner fields do not
+select the publisher owner. The internal envelope is removed before delivery.
+Account ticks bypass the shared MarketDataService cache; account sandbox quotes
+continue through the existing account-owned REST polling path. Legacy delivery
+is unchanged when the flag is off. Other broker publishers have not been
+migrated and their unwrapped ticks are dropped in account mode. The ZMQ channel
+remains a trusted internal process boundary, not a signed transport.
+Nine synthetic tests cover envelope validation, legacy payloads and actual
+listener routing for two accounts; live Groww transport and load remain untested.

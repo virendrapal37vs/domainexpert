@@ -1048,7 +1048,8 @@ class GrowwWebSocketAdapter(BaseBrokerWebSocketAdapter):
                         f"Publishing #{self._message_count}: {topic} ({mode_str}) -> {ltp_info}"
                     )
 
-                self.publish_market_data(topic, market_data)
+                from utils.account_market_data import pack_account_tick
+                self.publish_market_data(topic, pack_account_tick(self.user_id, market_data))
                 self.logger.debug(f"ZMQ Published: {topic}")
 
         except Exception as e:

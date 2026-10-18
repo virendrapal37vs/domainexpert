@@ -2106,7 +2106,12 @@ class WebSocketProxy:
                     logger.debug(f"Skipping private event topic: {topic_str}")
                     continue
 
-                market_data = json.loads(data_str)
+                from database.account_broker_db import per_user_groww_enabled
+                from utils.account_market_data import unpack_account_tick
+                account_scoped = per_user_groww_enabled()
+                tick_owner, market_data = unpack_account_tick(json.loads(data_str))
+                if account_scoped and market_data is None:
+                    continue
 
                 # Extract topic components from ZMQ topic string.
                 # All adapters publish: EXCHANGE_SYMBOL_MODE
@@ -2176,8 +2181,9 @@ class WebSocketProxy:
                         "mode": mode,
                         "data": market_data,
                     }
-                    market_data_service = get_market_data_service()
-                    market_data_service.process_market_data(mds_data)
+                    if not account_scoped:
+                        market_data_service = get_market_data_service()
+                        market_data_service.process_market_data(mds_data)
                 except Exception as mds_error:
                     # Don't block WebSocket delivery if MarketDataService has issues
                     logger.debug(f"MarketDataService processing error: {mds_error}")
@@ -2215,6 +2221,9 @@ class WebSocketProxy:
                     # Verify user mapping exists
                     user_id = self.user_mapping.get(client_id)
                     if not user_id:
+                        continue
+
+                    if account_scoped and user_id != tick_owner:
                         continue
 
                     # OBSERVABILITY: record that this user's feed is live (a tick
