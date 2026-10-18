@@ -596,3 +596,16 @@ Eight boundary tests exercise real route/helper bodies with validator stubs;
 fresh credential validation has separate real SQLite tests. These are not a
 live trigger/executor integration test. Outer Flow guards and internal execution
 guards remain enabled; scheduler/monitor execution wiring remains pending.
+
+### Background Flow trigger boundary
+
+Scheduler callbacks and price/order monitor trigger entry points now invoke the
+account owner-validation boundary before submitting any execution. Persistent
+schedules with no supplied key use only their workflow row's stored key, never
+a global/session fallback. Blocked monitor triggers reset the one-shot claim
+instead of consuming it. Database sessions used by the boundary are removed.
+Even valid account credentials still return blocked: Flow execution and graph
+monitoring remain disabled. Six tests execute real entry/helper bodies with
+fake monitor objects and credential boundaries; these are not live jobstore,
+monitor-pool or broker integration tests. Legacy triggers bypass the new owner
+check when account flags are off.

@@ -560,6 +560,8 @@ def execute_workflow_scheduled(
     """
     from utils.strategy_account_guard import shared_strategy_disabled
     if shared_strategy_disabled():
+        from utils.flow_execution_owner import account_flow_trigger_allowed
+        account_flow_trigger_allowed(workflow_id, api_key)
         return
     from services.flow_executor_service import execute_workflow
 

@@ -15,3 +15,26 @@ def validate_flow_execution_owner(workflow_id, api_key):
     if not proxy_auth_stamp(owner, 'groww', api_key):
         raise ValueError('Workflow account credentials are inactive or mismatched')
     return owner
+
+
+def account_flow_trigger_allowed(workflow_id, api_key=None):
+    """Validate a background trigger, retaining the account execution block."""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if not shared_strategy_disabled():
+        return True
+    flow_db = None
+    try:
+        from database import flow_db
+        # Persistent schedules intentionally carry no plaintext API key. Read
+        # only this workflow's stored key; never use a global or session key.
+        if api_key is None:
+            workflow = flow_db.get_workflow(workflow_id)
+            api_key = flow_db.get_workflow_api_key(workflow)
+        validate_flow_execution_owner(workflow_id, api_key)
+    except Exception:
+        return False
+    finally:
+        if flow_db is not None:
+            flow_db.db_session.remove()
+    # Owner verification alone does not certify graph execution/monitors.
+    return False

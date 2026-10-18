@@ -418,6 +418,10 @@ class FlowPriceMonitor:
         it. A deactivate/reactivate cycle installs a new PriceAlert under the
         same id, and an id-keyed removal would delete that new one.
         """
+        from utils.flow_execution_owner import account_flow_trigger_allowed
+        if not account_flow_trigger_allowed(alert.workflow_id, alert.api_key):
+            alert.triggered = False
+            return
         workflow_id = alert.workflow_id
         api_key = alert.api_key
         one_shot = alert.trigger != "every_time"

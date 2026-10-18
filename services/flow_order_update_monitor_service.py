@@ -236,6 +236,10 @@ class FlowOrderUpdateMonitor:
         return True
 
     def _fire(self, watch: OrderUpdateWatch, event) -> None:
+        from utils.flow_execution_owner import account_flow_trigger_allowed
+        if not account_flow_trigger_allowed(watch.workflow_id, watch.api_key):
+            watch.triggered = False
+            return
         logger.info(
             f"Order-update trigger fired for workflow {watch.workflow_id}: "
             f"orderid={event.orderid} status={event.order_status}"
