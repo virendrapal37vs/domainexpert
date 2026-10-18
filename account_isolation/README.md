@@ -303,3 +303,19 @@ are created. This is a temporary feature block, not account-aware strategy risk
 monitoring. Stop/status permissions of other runners, Python process isolation,
 Flow/bot lifecycle and full two-account HTTP behavior remain unfinished.
 Do not enable account modes or public trading. Restart staging to load guards.
+
+### Running-app onboarding smoke check
+
+With restricted staging already running on loopback 5001, run:
+
+    ~/domainxpert-staging-venv/bin/python account_isolation/smoke_staging.py
+
+The script validates this checkout's staging env, disables environment proxy
+inheritance and redirects, checks blocked HTTP/socket paths, then creates two
+random non-admin accounts via HTTP. It signs them in, saves dummy credentials,
+tries an owner-field override, and verifies both exact DB records plus CSRF
+rejection. Passwords/keys/responses are not printed. Two test users remain in the
+staging DB and signup/login limits apply; do not repeatedly rerun after 429.
+This script has been syntax-checked locally but must be run against the actual
+staging process to establish an HTTP result. It does not establish trading,
+WebSocket tenant delivery, email ownership, log export, or background isolation.
