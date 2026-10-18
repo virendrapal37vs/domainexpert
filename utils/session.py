@@ -1,3 +1,4 @@
+from utils.account_socket import emit_session_event
 import os
 from datetime import datetime, timedelta
 from functools import wraps
@@ -272,7 +273,7 @@ def revoke_user_tokens(revoke_db_tokens=True):
                 try:
                     from extensions import socketio
 
-                    socketio.emit(
+                    emit_session_event(socketio, username,
                         "force_logout",
                         {
                             "message": (
@@ -281,7 +282,7 @@ def revoke_user_tokens(revoke_db_tokens=True):
                             ),
                         },
                     )
-                    socketio.emit(
+                    emit_session_event(socketio, username,
                         "active_sessions_update",
                         {
                             "count": 0,

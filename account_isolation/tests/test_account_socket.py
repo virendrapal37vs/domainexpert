@@ -34,6 +34,7 @@ def test_connection_uses_session_account_not_payload(monkeypatch):
     join = Mock()
     monkeypatch.setitem(sys.modules, 'flask_socketio', SimpleNamespace(join_room=join))
     monkeypatch.setitem(sys.modules, 'utils.account_access', SimpleNamespace(current_account=lambda: SimpleNamespace(username='alice') if session.get('user') else None))
+    monkeypatch.setattr('utils.account_socket.socket_session_active', lambda username: True)
     socket = Mock()
     register_account_socket(socket)
     handler = socket.on_event.call_args.args[1]

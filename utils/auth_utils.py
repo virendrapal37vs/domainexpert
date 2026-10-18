@@ -1,3 +1,4 @@
+from utils.account_socket import emit_session_event
 import importlib
 import os
 import re
@@ -529,7 +530,7 @@ def handle_auth_success(auth_token, user_session_key, broker, feed_token=None, u
     # Emit session count update via SocketIO (event-driven, no polling)
     from extensions import socketio
     active = get_active_sessions(user_session_key)
-    socketio.emit("active_sessions_update", {
+    emit_session_event(socketio, user_session_key, "active_sessions_update", {
         "count": len(active),
         "sessions": active,
     })

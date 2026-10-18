@@ -347,3 +347,20 @@ or full app socket middleware test. The subscriber source module is loaded
 without the package initializer to avoid starting unrelated messaging adapters.
 Logout/revocation, session expiry and market-data proxy ownership remain pending.
 The test environment now requires Flask-SocketIO; production deps are unchanged.
+
+### Account session notifications and socket reconnect validation
+
+Logout, password reset/change, session-expiry and login session-count event sites
+now use an account-scoped session event helper in per-user mode. force_logout
+emits to that account and disconnects its root-namespace sockets; other account
+rooms are unaffected. Legacy broadcasts remain unchanged when per-user mode is
+off. Private-room connections also require the existing session expiry check and
+an ActiveSession row matching both username and signed session_id. Missing,
+expired or cleared registration rejects reconnect even if the cookie says logged_in.
+Three new real test-client cases cover own-only disconnect plus revoked-cookie
+replay rejection, private session counts and expired-cookie rejection. Existing
+transport fixtures now create real synthetic ActiveSession records.
+These tests call the notification helper after real DB revocation; they are not
+full HTTP password-reset/logout tests. Continuous expiry checks for already-open
+sockets, cross-process notification and Groww proxy revocation remain pending.
+Restart staging to load application changes; no DB migration/frontend build.

@@ -2,6 +2,7 @@
 import importlib
 import importlib.util
 from pathlib import Path
+from datetime import datetime, timezone
 import sys
 from types import SimpleNamespace
 import pytest
@@ -14,6 +15,7 @@ def transport(main_app, monkeypatch):
     socket = SocketIO(main_app, async_mode='threading')
     register_account_socket(socket)
     auth = importlib.import_module('database.auth_db')
+    auth.Base.metadata.create_all(auth.engine)
     monkeypatch.setattr(auth, 'get_username_by_apikey', lambda key: {'alice-key': 'alice', 'bob-key': 'bob'}.get(key))
     monkeypatch.setitem(sys.modules, 'extensions', SimpleNamespace(socketio=socket))
     # Load the real subscriber without package __init__, which starts unrelated
@@ -27,7 +29,9 @@ def transport(main_app, monkeypatch):
     for owner in ('alice', 'bob'):
         http = main_app.test_client()
         with http.session_transaction() as session:
-            session.update(user=owner, logged_in=True)
+            session.update(user=owner, logged_in=True, session_id=owner + '-session',
+                           login_time=datetime.now(timezone.utc).isoformat())
+        assert auth.register_session(owner, owner + '-session', broker='groww')
         http_clients[owner] = http
         # A claimed other username must not decide the room.
         sockets[owner] = socket.test_client(main_app, flask_test_client=http,
@@ -90,3 +94,35 @@ def test_invalid_key_event_is_not_broadcast(transport):
     subscriber.on_order_placed(event('invalid'))
     assert clients['alice'].get_received() == []
     assert clients['bob'].get_received() == []
+
+
+def test_force_logout_disconnects_only_owner_and_rejects_replay(transport):
+    from utils.account_socket import emit_session_event
+    app, socket, clients, http, _subscriber = transport
+    auth = importlib.import_module('database.auth_db')
+    auth.clear_user_sessions('alice')
+    emit_session_event(socket, 'alice', 'force_logout', {'message': 'Synthetic logout'})
+    assert not clients['alice'].is_connected()
+    assert clients['bob'].is_connected()
+    assert clients['bob'].get_received() == []
+    replay = socket.test_client(app, flask_test_client=http['alice'])
+    assert not replay.is_connected()
+
+
+def test_session_count_update_is_private(transport):
+    from utils.account_socket import emit_session_event
+    _app, socket, clients, _http, _subscriber = transport
+    emit_session_event(socket, 'bob', 'active_sessions_update', {'count': 1})
+    assert clients['alice'].get_received() == []
+    assert clients['bob'].get_received()[0]['args'][0] == {'count': 1}
+
+
+def test_expired_cookie_cannot_join_private_room(transport):
+    from datetime import timedelta
+    app, socket, _clients, _http, _subscriber = transport
+    http = app.test_client()
+    with http.session_transaction() as session:
+        session.update(user='alice', logged_in=True, session_id='alice-session',
+                       login_time=(datetime.now(timezone.utc) - timedelta(days=2)).isoformat())
+    expired = socket.test_client(app, flask_test_client=http)
+    assert not expired.is_connected()

@@ -1,3 +1,4 @@
+from utils.account_socket import emit_session_event
 import hashlib
 import os
 import re
@@ -742,7 +743,7 @@ def reset_password():
             # logged-in browser is theirs. Force re-login everywhere.
             from database.auth_db import clear_user_sessions
             clear_user_sessions(user.username)
-            socketio.emit("force_logout", {
+            emit_session_event(socketio, user.username, "force_logout", {
                 "message": "Your password was reset. Please log in again with the new password.",
             })
 
@@ -846,7 +847,7 @@ def change_password():
             # who already has a valid cookie from continuing to hold it.
             from database.auth_db import clear_user_sessions
             clear_user_sessions(username)
-            socketio.emit("force_logout", {
+            emit_session_event(socketio, username, "force_logout", {
                 "message": "Your password was changed. Please log in again with the new password.",
             })
             session.clear()
@@ -1350,12 +1351,12 @@ def logout():
         clear_user_sessions(username)
 
         # Notify all connected devices to logout immediately
-        socketio.emit("force_logout", {
+        emit_session_event(socketio, username, "force_logout", {
             "message": "You have been logged out from another device.",
         })
 
         # Update session count to 0
-        socketio.emit("active_sessions_update", {
+        emit_session_event(socketio, username, "active_sessions_update", {
             "count": 0,
             "sessions": [],
         })
@@ -1477,7 +1478,7 @@ def change_password_api():
         # attacker holding a stolen cookie is kicked out at the same moment.
         from database.auth_db import clear_user_sessions
         clear_user_sessions(username)
-        socketio.emit("force_logout", {
+        emit_session_event(socketio, username, "force_logout", {
             "message": "Your password was changed. Please log in again with the new password.",
         })
         session.clear()
