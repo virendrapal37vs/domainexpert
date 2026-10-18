@@ -553,3 +553,18 @@ callers have not all been migrated to pass owner_username, so Flow/deletion and
 restricted-staging guards must remain enabled. Legacy removal stays available
 with account flags off. Stale registrations for deleted/unowned workflows need
 explicit administrative repair rather than bypassing owner verification.
+
+### Account Flow deletion orchestration (outer guard remains)
+
+Account delete routes now dispatch to delete_account_workflow with the verified
+session owner. The service checks owner before acquiring the per-workflow run
+lock, rechecks under the lock, and refuses active/running workflows. It passes
+the same owner to strict scheduler removal, price/order monitor removal,
+subscription release and final database deletion. Failed cleanup or remaining
+subscriptions retain the workflow row and credentials for idempotent retry;
+partial successful removals are not rolled back. Locks release on all paths.
+Eight service tests use real owner-scoped SQLite rows with fake cleanup services.
+Existing CRUD route tests deliberately stub the delete dispatcher; they do not
+exercise a live HTTP-to-jobstore-to-broker deletion chain. Flow's outer feature
+and restricted-staging guards remain enabled. Activation/execution and monitors
+still need account migration before enabling the feature.

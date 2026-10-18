@@ -25,6 +25,12 @@ def http(flows, monkeypatch):
         ('get_workflow','/flows/<int:workflow_id>','GET'),('update_workflow','/flows/<int:workflow_id>','PUT'),
         ('delete_workflow','/flows/<int:workflow_id>','DELETE')]:
         app.add_url_rule(path, endpoint=name, view_func=function('blueprints/flow.py', name, env), methods=[verb])
+    def guarded_delete(wid, owner):
+        if flows.get_account_workflow(wid, owner) is None:
+            return {'error': 'Workflow not found'}, 404
+        return {'error': 'Cleanup fixture intentionally unavailable'}, 503
+    monkeypatch.setitem(sys.modules, 'services.account_flow_cleanup',
+                        SimpleNamespace(delete_account_workflow=guarded_delete))
     client = app.test_client()
     with client.session_transaction() as session:
         session['user'] = 'alice'

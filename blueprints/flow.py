@@ -401,13 +401,9 @@ def delete_workflow(workflow_id):
     """Delete a workflow"""
     owner = _flow_account_owner()
     if owner is not None:
-        from database.flow_db import get_account_workflow
-        owned = get_account_workflow(workflow_id, owner)
-        if owned is None:
-            return jsonify({"error": "Workflow not found"}), 404
-        # Keep teardown of potentially armed legacy workflows disabled until
-        # account-owned triggers and subscription cleanup are migrated.
-        return jsonify({"error": "Account workflow deletion requires isolated trigger cleanup"}), 503
+        from services.account_flow_cleanup import delete_account_workflow
+        payload, status = delete_account_workflow(workflow_id, owner)
+        return jsonify(payload), status
     from services.flow_executor_service import get_workflow_lock
 
     lock = get_workflow_lock(workflow_id)
