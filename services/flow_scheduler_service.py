@@ -150,6 +150,7 @@ class FlowScheduler:
         interval_unit: str | None = None,
         func: Callable = None,
         market_hours_only: bool = False,
+        *, owner_username: str | None = None,
     ) -> str:
         """Add a workflow job to the scheduler
 
@@ -167,7 +168,7 @@ class FlowScheduler:
 
         # Clear any previous job for this workflow. A brand-new workflow has
         # none, which remove_job treats as a normal no-op.
-        self.remove_job(job_id)
+        self.remove_job(job_id, owner_username=owner_username)
 
         # Use default function if not provided
         if func is None:

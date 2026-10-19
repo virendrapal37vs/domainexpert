@@ -650,3 +650,20 @@ rejection, revoked stop/activation behavior and key rotation.
 This is the database lifecycle step only: it does not register/remove triggers,
 make HTTP activation available, or enable Flow execution. Existing internal
 lifecycle callers still need explicit owner propagation. Guards remain enabled.
+
+### Account activation service and registration rollback
+
+activate_account_workflow now validates exact owner/current key and graph under
+the workflow lock, clears stale registrations, persists active state/key, then
+registers the selected trigger. Registration rechecks the owner/key. Schedules
+pass explicit owner to scheduler replacement and never set its global API key;
+price/order registrations receive the exact workflow key, and order watches get
+the verified username. Failures first persist inactive state, then retry owner-
+scoped registration removal. Partial rollback returns cleanup_pending and retains
+credentials for repair. These operations are not one atomic DB/jobstore transaction.
+Eight service tests use real SQLite/auth with registration mocked. Three additional
+tests verify an actual paused SQLite scheduler registration (without plaintext key
+in job arguments) and key/owner propagation to fake monitor registrations.
+This internal service is not wired to enabled HTTP activation yet. Existing outer
+Flow and execution guards remain. Live monitor start, post-crash reconciliation,
+concurrent multi-process activation and broker execution remain unverified.
