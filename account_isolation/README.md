@@ -773,3 +773,19 @@ with monitor registration calls stubbed to avoid starting polling or event-bus
 threads. Valid Alice/Bob keys stay separate; revoked credentials, disabled policy
 and one-shot configuration are skipped. This is registration recovery coverage,
 not a process restart test or durable one-shot execution implementation.
+
+### Durable one-shot state foundation (not dispatched)
+
+`account_flow_trigger_states` stores an explicit owner, random activation identity
+and armed/claimed/consumed state. Atomic conditional updates allow a single
+claim across independent connections. Existing claims are never implicitly reset;
+an interrupted claimed state remains closed for later reconciliation. No broker tokens,
+broker keys or order data are stored. Owner SQL predicates also prevent orphaned
+state from being used after workflow deletion. The table is created by normal
+Flow metadata initialization. No legacy workflows are assigned state.
+
+Five storage tests cover competing claims, wrong owners/tokens, consumed and
+interrupted state across fresh connections, and deleted workflows. This patch
+only adds storage helpers: activation, dispatch, recovery/reconciliation and
+explicit re-arm are not wired to them. It does not implement exactly-once broker
+orders, and one-shot account triggers remain blocked.

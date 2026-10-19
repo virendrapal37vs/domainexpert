@@ -123,6 +123,15 @@ class FlowWorkflowExecution(Base):
     workflow = relationship("FlowWorkflow", back_populates="executions")
 
 
+class AccountFlowTriggerState(Base):
+    """Durable one-shot claim. Never automatically retry an uncertain claim."""
+    __tablename__ = "account_flow_trigger_states"
+    workflow_id = Column(Integer, primary_key=True)
+    owner_username = Column(String(255), nullable=False)
+    activation_id = Column(String(64), nullable=False)
+    state = Column(String(20), nullable=False)
+
+
 def init_db():
     """Initialize the database"""
     from database.db_init_helper import init_db_with_logging
