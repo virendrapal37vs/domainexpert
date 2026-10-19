@@ -110,3 +110,34 @@ def activate_account_workflow(workflow_id, owner, api_key):
             return {'error':'Workflow activation failed','cleanup_pending':cleanup_pending},503
     finally:
         lock.release()
+
+
+def deactivate_account_workflow(workflow_id, owner):
+    """Stand down before cleanup; owner authorization does not need a broker key."""
+    from database.flow_db import get_account_workflow, deactivate_workflow, set_schedule_job_id
+    from services.flow_executor_service import (
+        get_workflow_lock, release_workflow_subscriptions, has_workflow_subscriptions,
+    )
+    if get_account_workflow(workflow_id, owner) is None:
+        return {'error':'Workflow not found'},404
+    lock = get_workflow_lock(workflow_id)
+    if not lock.acquire(blocking=False):
+        return {'error':'Workflow is still running'},409
+    try:
+        if get_account_workflow(workflow_id, owner) is None:
+            return {'error':'Workflow not found'},404
+        try:
+            if deactivate_workflow(workflow_id, owner_username=owner) is None:
+                return {'error':'Could not persist inactive state'},503
+            remove_account_triggers(workflow_id, owner)
+            release_workflow_subscriptions(workflow_id, owner_username=owner)
+            if has_workflow_subscriptions(workflow_id):
+                return {'error':'Workflow is inactive but subscription cleanup needs retry',
+                        'cleanup_pending':True},503
+            if not set_schedule_job_id(workflow_id, None):
+                raise RuntimeError('Could not clear schedule marker')
+        except Exception:
+            return {'error':'Workflow cleanup failed. Retry later.','cleanup_pending':True},503
+        return {'status':'success','message':'Workflow deactivated'},200
+    finally:
+        lock.release()

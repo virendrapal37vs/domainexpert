@@ -667,3 +667,17 @@ in job arguments) and key/owner propagation to fake monitor registrations.
 This internal service is not wired to enabled HTTP activation yet. Existing outer
 Flow and execution guards remain. Live monitor start, post-crash reconciliation,
 concurrent multi-process activation and broker execution remain unverified.
+
+### HTTP lifecycle service wiring (outer guard remains)
+
+Account activation/deactivation route bodies now call the owner-scoped lifecycle
+services using the verified session account, ignoring supplied owner fields.
+Deactivation persists inactive state before removing owner-specific triggers and
+subscriptions, and retains row/key on cleanup failure for retry. It does not
+fetch an API key, so broker revocation cannot prevent an authorized owner stop.
+Six HTTP tests execute real route bodies, lifecycle service and SQLite/auth with
+trigger registration/removal mocked; tests deliberately bypass the outer Flow
+feature guard. One earlier activation guard-body test is replaced by this route
+coverage. The test setup substitutes API-key retrieval with synthetic keys, not
+a broker session login. Normal restricted staging and the full Flow blueprint
+remain blocked; no live HTTP activation is exposed by this patch.

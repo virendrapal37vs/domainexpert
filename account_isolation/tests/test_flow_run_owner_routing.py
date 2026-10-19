@@ -45,7 +45,7 @@ def test_cross_account_activation_request_rejected_before_key_lookup(boundary,mo
     validate.assert_not_called()
 
 
-@pytest.mark.parametrize('name',['activate_workflow','execute_workflow_now'])
+@pytest.mark.parametrize('name',['execute_workflow_now'])
 def test_http_entry_checks_request_guard_before_shared_imports(name):
     block=Mock(return_value=({'error':'blocked'},503))
     fn=function(FILE,name,{'_account_flow_request_block':block})

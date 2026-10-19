@@ -635,9 +635,11 @@ def _rollback_activation(workflow_id):
 @check_session_validity
 def activate_workflow(workflow_id):
     """Activate a workflow"""
-    blocked = _account_flow_request_block(workflow_id)
-    if blocked is not None:
-        return blocked
+    owner = _flow_account_owner()
+    if owner is not None:
+        from services.account_flow_activation import activate_account_workflow
+        payload, status = activate_account_workflow(workflow_id, owner, get_current_api_key())
+        return jsonify(payload), status
     from database.flow_db import activate_workflow as db_activate
     from database.flow_db import get_workflow, set_schedule_job_id
     from services.flow_order_update_monitor_service import get_flow_order_update_monitor
@@ -704,6 +706,11 @@ def activate_workflow(workflow_id):
 @check_session_validity
 def deactivate_workflow(workflow_id):
     """Deactivate a workflow"""
+    owner = _flow_account_owner()
+    if owner is not None:
+        from services.account_flow_activation import deactivate_account_workflow
+        payload, status = deactivate_account_workflow(workflow_id, owner)
+        return jsonify(payload), status
     from services.flow_executor_service import get_workflow_lock
 
     lock = get_workflow_lock(workflow_id)
