@@ -518,6 +518,28 @@ def create_execution(workflow_id, status="pending"):
         return None
 
 
+def _account_execution_query(username):
+    owner = _verified_workflow_owner(username)
+    return (FlowWorkflowExecution.query
+            .join(FlowWorkflow, FlowWorkflow.id == FlowWorkflowExecution.workflow_id)
+            .filter(FlowWorkflow.owner_username == owner).populate_existing())
+
+
+def get_account_execution(execution_id, username):
+    """Owner-filtered execution, including its logs; no unscoped fallback."""
+    return _account_execution_query(username).filter(FlowWorkflowExecution.id == execution_id).first()
+
+
+def get_account_workflow_executions(workflow_id, username, limit=50):
+    try:
+        limit = min(max(int(limit or 50), 1), EXECUTIONS_QUERY_MAX)
+    except (TypeError, ValueError):
+        limit = 50
+    return (_account_execution_query(username)
+            .filter(FlowWorkflowExecution.workflow_id == workflow_id)
+            .order_by(FlowWorkflowExecution.id.desc()).limit(limit).all())
+
+
 def get_execution(execution_id):
     """Get execution by ID"""
     try:

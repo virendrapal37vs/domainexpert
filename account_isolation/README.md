@@ -731,3 +731,16 @@ each test. No external broker request occurs. This does not verify recovery afte
 server restart, production jobstore concurrency, price/order monitor execution,
 rearming a skipped one-time job, or live market/broker behavior. Deployment flags
 remain unchanged; account Flow execution must stay default-off on staging.
+
+### Account execution history and logs
+
+New account execution/list helpers join workflow ownership in SQL and have no
+unscoped fallback. History HTTP route bodies verify the session owner's workflow
+before returning executions/logs; other-account and ownerless IDs return 404.
+Workflow list summaries also use the scoped history helper. Existing internal
+execution readers remain available for engine bookkeeping and are not account
+APIs. Six SQLite/HTTP-body tests cover own logs, other/legacy workflow rejection,
+execution-ID filtering, anonymous requests, owner query spoofing and bounded
+limits. The tests bypass the outer feature guard; restricted staging and the
+full Flow blueprint stay blocked. This patch adds no public execution-ID route
+and does not verify redaction of every possible node-generated log payload.

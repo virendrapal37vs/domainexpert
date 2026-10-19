@@ -69,7 +69,11 @@ def list_workflows():
     items = []
 
     for wf in workflows:
-        executions = get_workflow_executions(wf.id, limit=1)
+        if owner is not None:
+            from database.flow_db import get_account_workflow_executions
+            executions = get_account_workflow_executions(wf.id, owner, limit=1)
+        else:
+            executions = get_workflow_executions(wf.id, limit=1)
         last_exec = executions[0] if executions else None
 
         items.append(
@@ -861,13 +865,22 @@ def get_workflow_executions(workflow_id):
     """Get execution history for a workflow"""
     from database.flow_db import get_workflow_executions
 
+    owner = _flow_account_owner()
+    if owner is not None:
+        from database.flow_db import get_account_workflow
+        if get_account_workflow(workflow_id, owner) is None:
+            return jsonify({"error": "Workflow not found"}), 404
     # Clamped. The raw value went straight into SQL LIMIT, where SQLite reads a
     # negative as "no limit" -- so ?limit=-1 serialised every execution row, each
     # carrying a full log blob, into one response. `type=int` also yields None on
     # a non-numeric value, which reaches LIMIT as unlimited too.
     requested = request.args.get("limit", EXECUTIONS_DEFAULT_LIMIT, type=int)
     limit = min(max(requested or EXECUTIONS_DEFAULT_LIMIT, 1), EXECUTIONS_MAX_LIMIT)
-    executions = get_workflow_executions(workflow_id, limit=limit)
+    if owner is not None:
+        from database.flow_db import get_account_workflow_executions
+        executions = get_account_workflow_executions(workflow_id, owner, limit=limit)
+    else:
+        executions = get_workflow_executions(workflow_id, limit=limit)
 
     return jsonify(
         [
