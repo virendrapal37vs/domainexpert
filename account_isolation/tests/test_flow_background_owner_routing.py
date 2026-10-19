@@ -44,13 +44,12 @@ def test_account_trigger_resolves_only_own_stored_key_and_stays_blocked(monkeypa
     module=importlib.import_module('utils.flow_execution_owner')
     validate=Mock(return_value='alice')
     monkeypatch.setattr(module,'validate_flow_execution_owner',validate)
-    db=SimpleNamespace(get_workflow=Mock(return_value=object()),get_workflow_api_key=Mock(return_value='stored-key'),db_session=SimpleNamespace(remove=Mock()))
+    db=SimpleNamespace(get_workflow=Mock(return_value=SimpleNamespace(is_active=True)),get_workflow_api_key=Mock(return_value='stored-key'),db_session=SimpleNamespace(remove=Mock()))
     import database
     monkeypatch.setattr(database,'flow_db',db,raising=False)
     assert module.account_flow_trigger_allowed(42,presented) is False
     validate.assert_called_once_with(42,expected)
-    if presented:
-        db.get_workflow.assert_not_called()
+    db.get_workflow.assert_called_once_with(42)
     db.db_session.remove.assert_called_once()
 
 

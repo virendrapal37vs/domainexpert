@@ -292,7 +292,9 @@ class FlowOrderUpdateMonitor:
                     f"Workflow {watch.workflow_id} execution result: {result.get('status')}"
                 )
                 # `already_running` means this event never reached the graph.
-                executed = not result.get("already_running")
+                from utils.strategy_account_guard import shared_strategy_disabled
+                executed = (bool(result.get("execution_id")) if shared_strategy_disabled()
+                            else not result.get("already_running"))
             except Exception:
                 logger.exception(f"Failed to execute workflow {watch.workflow_id}")
             finally:

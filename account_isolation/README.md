@@ -699,3 +699,20 @@ real SQLite/auth/graph validation and fake broker clients. They cover two-owner
 routing, wrong keys, policy/staging blocks, unsupported nodes, between-node
 revocation and policy shutdown. No live broker request was made. Do NOT enable
 this experimental path in the deployed staging or production configuration yet.
+
+### Guarded HTTP/scheduled dispatch and one-shot outcomes
+
+The Run Now boundary and scheduled callbacks can now enter the guarded internal
+account path only when its execution policy is enabled. Scheduled admission
+requires an active owner-verified workflow and reads only its stored key when
+no key is supplied. The outer Flow blueprint and restricted-staging guard remain
+blocked. Unsupported node outcomes report 422, disabled execution 503 and owner
+credential failures 403. Price/order callbacks consume an account one-shot only
+when a run actually created an execution record, retaining rejected triggers.
+Six additional HTTP/schedule-to-engine tests use real SQLite/auth and full graph
+execution with fake broker clients; HTTP route bodies are tested with the outer
+blueprint guard intentionally bypassed. Six callback-body tests use an immediate
+fake pool to verify rearming/consumption. Actual price/order trigger roots are
+still unsupported by the limited account engine. This does not enable the feature
+on deployed staging, certify live broker transport, or test a firing jobstore.
+Keep DOMAINXPERT_ACCOUNT_FLOW_EXECUTION unset/false and restricted staging on.

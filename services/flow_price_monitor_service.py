@@ -472,7 +472,9 @@ class FlowPriceMonitor:
                 logger.info(f"Workflow {workflow_id} execution result: {result.get('status')}")
                 # `already_running` means this event never reached the graph.
                 # Anything else did run, whatever the broker made of it.
-                executed = not result.get("already_running")
+                from utils.strategy_account_guard import shared_strategy_disabled
+                executed = (bool(result.get("execution_id")) if shared_strategy_disabled()
+                            else not result.get("already_running"))
 
             except Exception as e:
                 logger.exception(f"Failed to execute workflow {workflow_id}: {e}")

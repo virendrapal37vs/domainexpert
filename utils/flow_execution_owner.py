@@ -18,7 +18,7 @@ def validate_flow_execution_owner(workflow_id, api_key):
 
 
 def account_flow_trigger_allowed(workflow_id, api_key=None):
-    """Validate a background trigger, retaining the account execution block."""
+    """Admit only verified background triggers when account execution is enabled."""
     from utils.strategy_account_guard import shared_strategy_disabled
     if not shared_strategy_disabled():
         return True
@@ -27,8 +27,10 @@ def account_flow_trigger_allowed(workflow_id, api_key=None):
         from database import flow_db
         # Persistent schedules intentionally carry no plaintext API key. Read
         # only this workflow's stored key; never use a global or session key.
+        workflow = flow_db.get_workflow(workflow_id)
+        if workflow is None or not workflow.is_active:
+            return False
         if api_key is None:
-            workflow = flow_db.get_workflow(workflow_id)
             api_key = flow_db.get_workflow_api_key(workflow)
         validate_flow_execution_owner(workflow_id, api_key)
     except Exception:
@@ -36,5 +38,5 @@ def account_flow_trigger_allowed(workflow_id, api_key=None):
     finally:
         if flow_db is not None:
             flow_db.db_session.remove()
-    # Owner verification alone does not certify graph execution/monitors.
-    return False
+    from services.account_flow_execution import account_flow_execution_enabled
+    return account_flow_execution_enabled()

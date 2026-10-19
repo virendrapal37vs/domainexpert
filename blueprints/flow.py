@@ -223,6 +223,11 @@ def _execution_status_code(result: dict) -> int:
     """
     if not isinstance(result, dict):
         return 200
+    account_codes = {"FLOW_OWNER_AUTH_FAILED": 403,
+                     "FLOW_ACCOUNT_ISOLATION_PENDING": 503,
+                     "FLOW_NODE_NOT_ACCOUNT_READY": 422}
+    if result.get("code") in account_codes:
+        return account_codes[result["code"]]
     if result.get("already_running"):
         return 409
     # Only a workflow started in the background (gthread only) carries these.
@@ -245,6 +250,9 @@ def _account_flow_run_error(workflow, api_key):
     except ValueError:
         return {"status": "error", "code": "FLOW_OWNER_AUTH_FAILED",
                 "message": "Workflow account credentials are inactive or mismatched."}
+    from services.account_flow_execution import account_flow_execution_enabled
+    if account_flow_execution_enabled():
+        return None
     return {"status": "error", "code": "FLOW_ACCOUNT_ISOLATION_PENDING",
             "message": "Account-owned Flow execution is not available."}
 
@@ -258,6 +266,8 @@ def _account_flow_request_block(workflow_id):
     if workflow is None:
         return jsonify({"error": "Workflow not found"}), 404
     error = _account_flow_run_error(workflow, get_current_api_key())
+    if error is None:
+        return None
     return jsonify(error), 403 if error["code"] == "FLOW_OWNER_AUTH_FAILED" else 503
 
 
