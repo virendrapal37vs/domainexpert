@@ -40,3 +40,15 @@ def account_flow_trigger_allowed(workflow_id, api_key=None):
             flow_db.db_session.remove()
     from services.account_flow_execution import account_flow_execution_enabled
     return account_flow_execution_enabled()
+
+
+def account_monitor_restore_owner(workflow_id, api_key, data):
+    """Require current policy/identity before rebuilding account monitor state."""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if not shared_strategy_disabled():
+        return None
+    if data.get("trigger", "once") != "every_time":
+        raise ValueError("Account one-shot monitor recovery is not supported")
+    if not account_flow_trigger_allowed(workflow_id, api_key):
+        raise ValueError("Account monitor recovery is disabled or credentials are inactive")
+    return validate_flow_execution_owner(workflow_id, api_key)

@@ -658,6 +658,8 @@ def restore_price_alerts() -> int:
             )
             continue
         try:
+            from utils.flow_execution_owner import account_monitor_restore_owner
+            owner = account_monitor_restore_owner(workflow.id, api_key, data)
             monitor.add_alert(
                 workflow_id=workflow.id,
                 symbol=symbol,

@@ -761,3 +761,15 @@ revoked polling, missing/conflicting order identities and explicit one-shot
 rejection. No background polling loop, external event bus or live broker runs.
 The outer Flow blueprint/restricted-staging guard stays blocked, execution flag
 stays off in deployment, and other graph node capabilities remain unsupported.
+
+### Account monitor recovery admission
+
+Price-alert and order-update restore paths now verify current execution policy,
+active workflow and fresh owner credentials before rebuilding registrations.
+Order watches receive the verified owner explicitly. Unsupported one-shot
+registrations remain blocked on recovery as well as activation and execution.
+Eight tests exercise production restore functions against persisted workflows,
+with monitor registration calls stubbed to avoid starting polling or event-bus
+threads. Valid Alice/Bob keys stay separate; revoked credentials, disabled policy
+and one-shot configuration are skipped. This is registration recovery coverage,
+not a process restart test or durable one-shot execution implementation.

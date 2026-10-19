@@ -499,9 +499,12 @@ def restore_order_update_watches() -> int:
             continue
         data = trigger_node.get("data", {}) or {}
         try:
+            from utils.flow_execution_owner import account_monitor_restore_owner
+            owner = account_monitor_restore_owner(workflow.id, api_key, data)
             monitor.add_watch(
                 workflow_id=workflow.id,
                 api_key=api_key,
+                user_id=owner,
                 order_id=data.get("orderId") or None,
                 symbol=data.get("symbol") or None,
                 exchange=data.get("exchange") or None,
