@@ -622,3 +622,17 @@ future, and no callback executes. The event bus and broker unsubscribe boundary
 are stubbed; monitor registrations are seeded directly without starting polling.
 This verifies cleanup composition, not trigger activation, live broker transport
 or HTTP-to-execution integration. Flow and restricted-staging guards remain on.
+
+### Offline graph-engine integration (not production activation)
+
+Five tests load the full Flow executor module, real graph validator, real SQLite
+workflow/execution tables and fresh owner/key admission, then run a small order
+graph with fake broker clients. They verify distinct keys reach distinct clients,
+execution rows stay under the corresponding workflow, wrong/revoked keys do not
+enter the engine, broker refusal records only the owner's failed run, and the
+normal account execution guard is still present after the test context ends.
+The test harness explicitly bypasses the execution block only after owner
+validation and only with all broker clients replaced. This is NOT an enabled
+production multi-user activation/run path. Activation routes, trigger scheduling,
+mid-run revocation and live broker transport are not verified by these tests.
+No runtime code or production feature flag is changed by this patch.
