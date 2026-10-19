@@ -716,3 +716,18 @@ fake pool to verify rearming/consumption. Actual price/order trigger roots are
 still unsupported by the limited account engine. This does not enable the feature
 on deployed staging, certify live broker transport, or test a firing jobstore.
 Keep DOMAINXPERT_ACCOUNT_FLOW_EXECUTION unset/false and restricted staging on.
+
+### Actual scheduler firing integration
+
+Three tests now start a real BackgroundScheduler with a temporary SQLite
+SQLAlchemy jobstore and let its timers execute the production scheduled callback
+on worker threads. The complete guarded account engine, real owner/auth DB and
+graph validation are used with fake broker clients. Jobs carry no plaintext API
+key; callbacks read their workflow's stored key. Assertions cover separate owner
+orders/history, one revoked owner being skipped while the other runs, and
+restricted-staging policy preventing both jobs from submitting runs. The listener
+is bounded by a 15-second completion deadline and the scheduler shuts down after
+each test. No external broker request occurs. This does not verify recovery after
+server restart, production jobstore concurrency, price/order monitor execution,
+rearming a skipped one-time job, or live market/broker behavior. Deployment flags
+remain unchanged; account Flow execution must stay default-off on staging.
