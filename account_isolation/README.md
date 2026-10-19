@@ -609,3 +609,16 @@ monitoring remain disabled. Six tests execute real entry/helper bodies with
 fake monitor objects and credential boundaries; these are not live jobstore,
 monitor-pool or broker integration tests. Legacy triggers bypass the new owner
 check when account flags are off.
+
+### Scheduler/monitor cleanup integration check
+
+Three integration tests now load full production scheduler and monitor modules,
+use real SQLite workflow rows and an APScheduler SQLAlchemy jobstore, and run
+the actual account deletion service. They verify that Alice's job is removed
+from persisted storage and both monitor registries while Bob's survive; a
+wrong-owner request changes nothing; and a partial failure retains the workflow
+row so a retry finishes safely. The scheduler is paused, jobs are far in the
+future, and no callback executes. The event bus and broker unsubscribe boundary
+are stubbed; monitor registrations are seeded directly without starting polling.
+This verifies cleanup composition, not trigger activation, live broker transport
+or HTTP-to-execution integration. Flow and restricted-staging guards remain on.
