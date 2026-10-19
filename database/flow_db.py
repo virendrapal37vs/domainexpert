@@ -344,16 +344,36 @@ def delete_workflow(workflow_id, *, owner_username=None):
         return False
 
 
-def activate_workflow(workflow_id, api_key=None):
-    """Activate a workflow and optionally store the API key for webhook execution"""
+def activate_workflow(workflow_id, api_key=None, *, owner_username=None):
+    """Persist activation only for the verified account and its current key.
+
+    This database step does not register a trigger. Account HTTP/execution guards
+    remain until the complete lifecycle has been integrated.
+    """
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if owner_username is not None or shared_strategy_disabled():
+        owner = _verified_workflow_owner(owner_username)
+        if get_account_workflow(workflow_id, owner) is None:
+            raise ValueError("Workflow not found for this account")
+        from utils.flow_execution_owner import validate_flow_execution_owner
+        if validate_flow_execution_owner(workflow_id, api_key) != owner:
+            raise ValueError("Workflow activation requires the owner's current API key")
+        return update_workflow(workflow_id, owner_username=owner,
+                               is_active=True, api_key=api_key)
     kwargs = {"is_active": True}
     if api_key:
         kwargs["api_key"] = api_key
     return update_workflow(workflow_id, **kwargs)
 
 
-def deactivate_workflow(workflow_id):
-    """Deactivate a workflow"""
+def deactivate_workflow(workflow_id, *, owner_username=None):
+    """Persist owner-authorized stop, even if the broker token has expired."""
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if owner_username is not None or shared_strategy_disabled():
+        owner = _verified_workflow_owner(owner_username)
+        if get_account_workflow(workflow_id, owner) is None:
+            raise ValueError("Workflow not found for this account")
+        return update_workflow(workflow_id, owner_username=owner, is_active=False)
     return update_workflow(workflow_id, is_active=False)
 
 

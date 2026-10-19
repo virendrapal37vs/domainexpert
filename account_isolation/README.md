@@ -636,3 +636,17 @@ validation and only with all broker clients replaced. This is NOT an enabled
 production multi-user activation/run path. Activation routes, trigger scheduling,
 mid-run revocation and live broker transport are not verified by these tests.
 No runtime code or production feature flag is changed by this patch.
+
+### Owner-checked lifecycle database writes
+
+activate_workflow/deactivate_workflow now accept explicit owner_username and
+require it in account mode. Activation verifies the exact workflow owner and
+fresh current Groww API key before saving active state plus the encrypted key.
+Deactivation requires workflow ownership but no broker token, so revoked broker
+credentials cannot prevent an owner from stopping their workflow. Wrong/missing
+owners and stale keys are rejected before mutation. Legacy calls remain unchanged
+with account flags off. Eight real SQLite/auth tests cover encryption, cross-owner
+rejection, revoked stop/activation behavior and key rotation.
+This is the database lifecycle step only: it does not register/remove triggers,
+make HTTP activation available, or enable Flow execution. Existing internal
+lifecycle callers still need explicit owner propagation. Guards remain enabled.
