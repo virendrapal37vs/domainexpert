@@ -16,6 +16,8 @@ def register_account_trigger(workflow, trigger, owner, api_key):
     if workflow.owner_username != owner or validate_flow_execution_owner(workflow.id, api_key) != owner:
         raise ValueError('Trigger requires its workflow owner')
     kind, data = trigger['type'], trigger.get('data') or {}
+    if kind in ('priceAlert','orderUpdateTrigger') and data.get('trigger','once') != 'every_time':
+        raise ValueError('Account price/order triggers currently require every_time mode')
     if kind == 'start':
         schedule = data.get('scheduleType')
         if schedule and schedule != 'manual':

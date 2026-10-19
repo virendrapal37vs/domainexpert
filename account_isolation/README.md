@@ -744,3 +744,20 @@ execution-ID filtering, anonymous requests, owner query spoofing and bounded
 limits. The tests bypass the outer feature guard; restricted staging and the
 full Flow blueprint stay blocked. This patch adds no public execution-ID route
 and does not verify redaction of every possible node-generated log payload.
+
+### Account price/order monitor integration (every_time only)
+
+The limited account engine now admits priceAlert/orderUpdateTrigger roots only
+with trigger=every_time. Account trigger registration rejects one-shot mode
+until durable retirement/restart behavior is migrated. Price polling verifies
+active workflow/owner credentials and execution policy before requesting quotes.
+Order matching verifies current workflow/key owner, watch owner and event owner
+agree; missing or conflicting identity cannot submit a run. Guarded engine order
+calls retain their fresh per-call checks.
+Six integration tests load full production monitors with actual worker pools,
+real SQLite/auth/graphs, fake quote/order clients and a stub event-bus subscriber.
+They exercise direct polling/event delivery through the worker pool and graph,
+revoked polling, missing/conflicting order identities and explicit one-shot
+rejection. No background polling loop, external event bus or live broker runs.
+The outer Flow blueprint/restricted-staging guard stays blocked, execution flag
+stays off in deployment, and other graph node capabilities remain unsupported.

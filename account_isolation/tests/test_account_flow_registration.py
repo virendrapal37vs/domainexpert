@@ -30,7 +30,7 @@ def test_monitor_registration_passes_exact_key_and_order_owner(owned,monkeypatch
     factory='get_flow_price_monitor' if kind=='priceAlert' else 'get_flow_order_update_monitor'
     monkeypatch.setitem(sys.modules,module,SimpleNamespace(**{factory:lambda:monitor}))
     from services.account_flow_activation import register_account_trigger
-    register_account_trigger(db.get_workflow(a),{'type':kind,'data':{'symbol':'BHEL','price':100}},'alice','a-key')
+    register_account_trigger(db.get_workflow(a),{'type':kind,'data':{'symbol':'BHEL','price':100,'trigger':'every_time'}},'alice','a-key')
     kwargs=getattr(monitor,method).call_args.kwargs
     assert kwargs['workflow_id']==a and kwargs['api_key']=='a-key'
     if kind=='orderUpdateTrigger':

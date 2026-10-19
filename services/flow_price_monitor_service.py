@@ -281,6 +281,11 @@ class FlowPriceMonitor:
 
     def _check_alert(self, alert: PriceAlert):
         """Check a single alert against current price"""
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            from utils.flow_execution_owner import account_flow_trigger_allowed
+            if not account_flow_trigger_allowed(alert.workflow_id, alert.api_key):
+                return
         if not alert.api_key:
             logger.warning(f"No API key for alert workflow {alert.workflow_id}")
             return

@@ -215,6 +215,17 @@ class FlowOrderUpdateMonitor:
         return str(user_id) if user_id else None
 
     def _matches(self, watch: OrderUpdateWatch, event) -> bool:
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            from utils.flow_execution_owner import validate_flow_execution_owner, account_flow_trigger_allowed
+            if not watch.user_id or not account_flow_trigger_allowed(watch.workflow_id, watch.api_key):
+                return False
+            try:
+                owner = validate_flow_execution_owner(watch.workflow_id, watch.api_key)
+            except ValueError:
+                return False
+            if owner != watch.user_id or self._event_user_id(event) != owner:
+                return False
         # Account scoping. A workflow executes with its owner's API key, so a
         # symbol-only watch must never be fired by a different account's fill.
         # Strict: an event that carries no identity cannot satisfy an

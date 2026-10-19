@@ -1,7 +1,7 @@
 """Opt-in account Flow execution for a deliberately small node capability set."""
 import os
 
-SUPPORTED_ACCOUNT_NODES = frozenset({'start', 'webhookTrigger', 'placeOrder', 'log'})
+SUPPORTED_ACCOUNT_NODES = frozenset({'start', 'webhookTrigger', 'priceAlert', 'orderUpdateTrigger', 'placeOrder', 'log'})
 
 
 def account_flow_execution_enabled():
@@ -48,6 +48,11 @@ def execute_account_flow_graph(workflow_id, webhook_data, api_key):
            for n in (workflow.nodes or [])):
         return {'status':'error','code':'FLOW_NODE_NOT_ACCOUNT_READY',
                 'message':'This graph contains nodes not yet supported for account execution.'}
+    if any(n.get('type') in ('priceAlert','orderUpdateTrigger')
+           and (n.get('data') or {}).get('trigger','once') != 'every_time'
+           for n in workflow.nodes):
+        return {'status':'error','code':'FLOW_NODE_NOT_ACCOUNT_READY',
+                'message':'Account price/order triggers currently require every_time mode.'}
     from services.flow_openalgo_client import get_flow_client
     from services.flow_executor_service import _execute_workflow_graph
     def factory(key):
