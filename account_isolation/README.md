@@ -681,3 +681,21 @@ feature guard. One earlier activation guard-body test is replaced by this route
 coverage. The test setup substitutes API-key retrieval with synthetic keys, not
 a broker session login. Normal restricted staging and the full Flow blueprint
 remain blocked; no live HTTP activation is exposed by this patch.
+
+### Opt-in internal account execution path (do not enable on staging)
+
+A real synchronous account entry path now exists for start, webhookTrigger,
+placeOrder and log nodes only. It requires DOMAINXPERT_ACCOUNT_FLOW_EXECUTION=true,
+DOMAINXPERT_ACCOUNT_MODES=true and restricted staging off. Default is disabled;
+this change does not set either flag or expose the outer Flow blueprint.
+Owner/current key is checked before history/client creation, unsupported node
+capabilities are refused, and the wrapped broker client rechecks policy plus
+fresh owner credentials before every order call. The shared graph body is reused
+by legacy execution and the guarded account path. Background/HTTP enablement,
+other node types, account-history APIs and complete runtime integration remain
+pending. Revocation cannot undo a broker request already in flight.
+Eight tests run the enabled internal path without bypassing its guards, against
+real SQLite/auth/graph validation and fake broker clients. They cover two-owner
+routing, wrong keys, policy/staging blocks, unsupported nodes, between-node
+revocation and policy shutdown. No live broker request was made. Do NOT enable
+this experimental path in the deployed staging or production configuration yet.

@@ -4700,7 +4700,9 @@ def execute_workflow(
     """Execute a workflow synchronously"""
     from utils.strategy_account_guard import shared_strategy_disabled
     if shared_strategy_disabled():
-        return {"status": "error", "code": "FLOW_ACCOUNT_ISOLATION_PENDING", "message": "Account-owned Flow execution is not available."}
+        from services.account_flow_execution import account_flow_execution_enabled, blocked_result
+        if not account_flow_execution_enabled():
+            return blocked_result()
     lock = get_workflow_lock(workflow_id)
 
     # Try-acquire, not locked()-then-acquire. The two-step form let both callers
@@ -4966,8 +4968,13 @@ def _execute_workflow_locked(
     """The body of execute_workflow. The caller holds the workflow's lock."""
     from utils.strategy_account_guard import shared_strategy_disabled
     if shared_strategy_disabled():
-        return {"status": "error", "code": "FLOW_ACCOUNT_ISOLATION_PENDING",
-                "message": "Account-owned Flow execution is not available."}
+        from services.account_flow_execution import execute_account_flow_graph
+        return execute_account_flow_graph(workflow_id, webhook_data, api_key)
+    return _execute_workflow_graph(workflow_id, webhook_data, api_key)
+
+
+def _execute_workflow_graph(workflow_id, webhook_data=None, api_key=None, *, client_factory=None):
+    """Shared graph engine. Account callers must enter via the guarded boundary."""
     workflow = get_workflow(workflow_id)
     if not workflow:
         return {"status": "error", "message": "Workflow not found"}
@@ -5014,7 +5021,7 @@ def _execute_workflow_locked(
         if not api_key:
             raise Exception("API key required for workflow execution")
 
-        client = get_flow_client(api_key)
+        client = (client_factory or get_flow_client)(api_key)
         executor = NodeExecutor(client, context, logs, default_strategy=workflow.name)
         logger.info(f"Starting workflow: {workflow.name}")
         executor.log(f"Starting workflow: {workflow.name}")
