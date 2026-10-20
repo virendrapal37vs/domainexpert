@@ -815,3 +815,19 @@ stubbed where noted. This is not a kill/restart process test or exactly-once bro
 delivery: crash reconciliation, explicit re-arm and public Flow rollout remain
 pending. Execution policy flags remain default-off and restricted staging blocks
 execution regardless of their values. No real broker request is made by tests.
+
+### Isolated OS-process restart coverage
+
+Four tests launch fresh Python interpreters against temporary synthetic SQLite
+accounts/workflows and run the actual guarded graph engine. Fake order transport
+writes/fsyncs a local receipt, never calls a broker. socket.connect is blocked in
+the child. Abrupt os._exit occurs (1) immediately after the committed claim before
+the graph and (2) after the fake transport receipt before an answer/history
+completion. New processes read claimed state and refuse a second attempt. A
+normal completed/consumed run also cannot replay; an untouched armed workflow
+can execute in a subsequent process. Alice's spent state does not block Bob.
+
+This is an interpreter/process crash test, not a reboot/systemd or live-broker
+integration test. It confirms fail-closed replay prevention, not guaranteed order
+completion. Interrupted claims still require explicit outcome reconciliation;
+there is no automatic re-arm. Running staging/production settings are unchanged.
