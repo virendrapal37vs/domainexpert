@@ -1,3 +1,4 @@
+import { OneShotReview } from '@/components/flow/OneShotReview'
 // pages/flow/FlowEditor.tsx
 // Flow visual workflow editor page
 
@@ -911,6 +912,7 @@ function FlowEditorContent() {
         <div role="status" className="border-b border-border bg-muted/50 px-4 py-3 text-sm">
           <span className="font-medium">One-shot: {workflow.one_shot_status.label}</span>
           <p className="mt-1 text-muted-foreground">{workflow.one_shot_status.message}</p>
+          <OneShotReview workflowId={workflow.id} isActive={workflow.is_active} status={workflow.one_shot_status} />
         </div>
       )}
 

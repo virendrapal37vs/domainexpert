@@ -22,4 +22,6 @@ def get_account_one_shot_status(workflow_id, owner):
     if state not in MESSAGES:
         state = 'unavailable'
     label, message = MESSAGES[state]
-    return {'state':state, 'label':label, 'message':message}
+    from database.account_flow_review_db import get_account_trigger_review
+    return {'state':state, 'label':label, 'message':message,
+            'review':get_account_trigger_review(workflow_id, owner)}

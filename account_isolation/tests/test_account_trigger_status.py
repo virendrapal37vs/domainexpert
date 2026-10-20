@@ -41,7 +41,8 @@ def test_detail_status_is_read_only_and_hides_activation_identity(status_detail,
     assert response.status_code==200
     value=response.json['one_shot_status']
     assert value['state']==state
-    assert set(value)=={'state','label','message'}
+    assert set(value)=={'state','label','message','review'}
+    assert value['review'] is None
     assert 'activation_id' not in response.text
     if token:
         assert token not in response.text

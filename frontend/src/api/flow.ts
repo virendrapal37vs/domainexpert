@@ -8,6 +8,8 @@ import { webClient } from './client'
 // Types
 // =============================================================================
 
+export type TriggerObservation = 'order_seen' | 'no_order_seen' | 'uncertain'
+
 export interface Workflow {
   id: number
   name: string
@@ -19,6 +21,7 @@ export interface Workflow {
     state: 'unarmed' | 'armed' | 'claimed' | 'consumed' | 'unavailable'
     label: string
     message: string
+    review: { observation: TriggerObservation; reviewed_at: string } | null
   } | null
   schedule_job_id: string | null
   webhook_token: string | null
@@ -428,4 +431,10 @@ export const flowQueryKeys = {
   // the set is a different key, and would re-request the whole basket - so the
   // caller keeps its own per-contract map and asks only for what is missing.
   symbolLotSizes: (keys: string[]) => [...flowQueryKeys.all, 'symbol-lotsizes', keys] as const,
+}
+
+/** Record an owner observation without modifying the trigger claim. */
+export async function recordWorkflowTriggerReview(id: number, observation: TriggerObservation) {
+  const response = await webClient.post(`${FLOW_API_BASE}/workflows/${id}/trigger-review`, { observation })
+  return response.data
 }

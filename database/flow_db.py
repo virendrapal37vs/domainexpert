@@ -132,6 +132,16 @@ class AccountFlowTriggerState(Base):
     state = Column(String(20), nullable=False)
 
 
+class AccountFlowTriggerReview(Base):
+    """Immutable owner observation; does not change the durable claim."""
+    __tablename__ = "account_flow_trigger_reviews"
+    workflow_id = Column(Integer, primary_key=True)
+    owner_username = Column(String(255), nullable=False)
+    activation_id = Column(String(64), nullable=False)
+    observation = Column(String(32), nullable=False)
+    reviewed_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 def init_db():
     """Initialize the database"""
     from database.db_init_helper import init_db_with_logging

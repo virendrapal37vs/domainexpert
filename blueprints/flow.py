@@ -218,6 +218,30 @@ def get_workflow(workflow_id):
     )
 
 
+@flow_bp.route("/api/workflows/<int:workflow_id>/trigger-review", methods=["POST"])
+@check_session_validity
+def record_trigger_review(workflow_id):
+    """Record the session owner's observation. Global CSRF protection applies."""
+    from database.flow_db import get_account_workflow
+    from database.account_flow_review_db import record_account_trigger_review
+    owner = _flow_account_owner()
+    if owner is None:
+        return jsonify({'error':'Account-owned Flow is required'}),403
+    if get_account_workflow(workflow_id, owner) is None:
+        return jsonify({'error':'Workflow not found'}),404
+    body = request.get_json(silent=True)
+    if not isinstance(body,dict):
+        return jsonify({'error':'An observation is required'}),400
+    try:
+        review = record_account_trigger_review(workflow_id, owner, body.get('observation'))
+    except ValueError as exc:
+        return jsonify({'error':str(exc)}),400
+    except Exception:
+        logger.exception('Could not persist workflow trigger review')
+        return jsonify({'error':'Review could not be saved'}),503
+    return jsonify({'status':'success','review':review})
+
+
 # Execution-history page size. The maximum bounds one response; a workflow on a
 # one-minute schedule writes hundreds of rows a day, each with a full log blob.
 EXECUTIONS_DEFAULT_LIMIT = 20

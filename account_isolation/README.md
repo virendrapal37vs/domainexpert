@@ -848,3 +848,22 @@ disclosure and unchanged state after reads; outer rollout/session decorators are
 not bypassed in the deployed app. TypeScript project build checks the frontend
 change. Public Flow rollout and restricted staging guards remain unchanged, so
 this UI is prepared for later rollout rather than exposed in restricted staging.
+
+### Owner observation record (not broker reconciliation)
+
+A POST workflow trigger-review route records one immutable owner observation:
+order_seen, no_order_seen or uncertain. It requires an authenticated account owner,
+global CSRF protection, an inactive workflow, and claimed/consumed durable state.
+The insert checks owner/state/inactive predicates in SQL. Repeated requests return
+the first observation rather than overwrite it. Read projection joins the exact
+activation identity, so an old observation cannot be presented for another arm.
+The new account_flow_trigger_reviews table is created by normal Flow DB metadata
+initialization; observations expose no activation identity or credentials.
+
+The editor offers this form only after deactivation and shows the saved owner
+observation explicitly as unverified. No broker verification, claim transition,
+retry, unlock or re-arm occurs. This is a review/audit aid, not automatic outcome
+reconciliation. Ten additional route-body/SQLite/CSRF tests cover owner isolation,
+immutable repeated requests, invalid/active/unarmed writes, anonymous and CSRF
+rejection, hidden identities and unchanged claims. Outer Flow rollout/restricted
+staging guards remain unchanged. The frontend TypeScript build also passes.
