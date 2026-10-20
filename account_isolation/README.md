@@ -789,3 +789,29 @@ interrupted state across fresh connections, and deleted workflows. This patch
 only adds storage helpers: activation, dispatch, recovery/reconciliation and
 explicit re-arm are not wired to them. It does not implement exactly-once broker
 orders, and one-shot account triggers remain blocked.
+
+### Guarded first-arm one-shot monitor execution
+
+Account price-alert and order-update `once` triggers now use durable state at
+activation and graph admission. Activation creates the first arm or reuses a
+still-unclaimed arm after registration failure. A claimed or consumed workflow
+cannot be reactivated automatically (409); explicit re-arm/reconciliation is not
+implemented. Legacy active one-shot rows without a durable arm are not restored.
+
+The engine checks fresh owner credentials and a matching monitor event, then
+atomically claims only an active workflow before graph execution. A returned
+execution ID consumes the claim even when the broker attempt failed: an unknown
+order outcome must not be automatically retried. The workflow is then stood down;
+persistence failures report cleanup_pending. Exceptions before that leave claimed
+state closed. Recovery restores only unclaimed arms. Monitor-local retirement no
+longer invokes the legacy ownerless deactivation writer. One-shot schedules are
+outside this monitor change.
+
+Eleven integration tests cover actual monitor pools into the guarded graph with a
+synthetic broker, same-account retirement, duplicate attempts, fresh connections,
+simulated interruption, revoked credentials, inactive/missing-event refusal,
+restore admission, completion persistence failure and activation rollback. Registration/restore side effects are
+stubbed where noted. This is not a kill/restart process test or exactly-once broker
+delivery: crash reconciliation, explicit re-arm and public Flow rollout remain
+pending. Execution policy flags remain default-off and restricted staging blocks
+execution regardless of their values. No real broker request is made by tests.

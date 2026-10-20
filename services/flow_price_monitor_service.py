@@ -536,6 +536,19 @@ class FlowPriceMonitor:
         Removal is by identity, so a run that finishes after the user has
         deactivated and reactivated cannot delete the newer registration.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            # The execution boundary persists consumption/inactive state before
+            # local retirement. Never call the legacy ownerless DB writer.
+            from database.flow_db import get_workflow
+            from database.account_flow_trigger_db import get_account_trigger_state
+            row = get_workflow(alert.workflow_id)
+            owner = getattr(row, 'owner_username', None)
+            if owner and get_account_trigger_state(alert.workflow_id, owner) == 'consumed':
+                with self._alerts_lock:
+                    if self._alerts.get(alert.workflow_id) is alert:
+                        self.remove_alert(alert.workflow_id, owner_username=owner)
+            return
         workflow_id = alert.workflow_id
         with self._alerts_lock:
             if self._alerts.get(workflow_id) is not alert:

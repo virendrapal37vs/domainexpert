@@ -48,11 +48,23 @@ def execute_account_flow_graph(workflow_id, webhook_data, api_key):
            for n in (workflow.nodes or [])):
         return {'status':'error','code':'FLOW_NODE_NOT_ACCOUNT_READY',
                 'message':'This graph contains nodes not yet supported for account execution.'}
-    if any(n.get('type') in ('priceAlert','orderUpdateTrigger')
-           and (n.get('data') or {}).get('trigger','once') != 'every_time'
-           for n in workflow.nodes):
+    monitors = [n for n in workflow.nodes if n.get('type') in ('priceAlert','orderUpdateTrigger')]
+    if any((n.get('data') or {}).get('trigger','once') not in ('once','every_time') for n in monitors):
         return {'status':'error','code':'FLOW_NODE_NOT_ACCOUNT_READY',
-                'message':'Account price/order triggers currently require every_time mode.'}
+                'message':'Unsupported account monitor trigger mode.'}
+    one_shot = any((n.get('data') or {}).get('trigger','once') == 'once' for n in monitors)
+    arm = None
+    if one_shot:
+        from database.account_flow_trigger_db import get_account_trigger_arm, claim_active_account_trigger
+        arm = get_account_trigger_arm(workflow_id, owner)
+        expected = 'price_alert' if monitors[0]['type'] == 'priceAlert' else 'order_update'
+        if arm is not None and (not isinstance(webhook_data, dict)
+                                or webhook_data.get('trigger_type') != expected):
+            return {'status':'error','code':'FLOW_TRIGGER_EVENT_REQUIRED',
+                    'message':'One-shot monitors require their matching trigger event.'}
+        if arm is None or not claim_active_account_trigger(workflow_id, owner, arm):
+            return {'status':'error','code':'FLOW_TRIGGER_NOT_ARMED',
+                    'message':'One-shot trigger is inactive, claimed or consumed.'}
     from services.flow_openalgo_client import get_flow_client
     from services.flow_executor_service import _execute_workflow_graph
     def factory(key):
@@ -60,4 +72,19 @@ def execute_account_flow_graph(workflow_id, webhook_data, api_key):
         if key != api_key:
             raise ValueError('Workflow key changed')
         return AccountFlowClient(workflow_id, owner, key, get_flow_client(key))
-    return _execute_workflow_graph(workflow_id, webhook_data, api_key, client_factory=factory)
+    if not one_shot:
+        return _execute_workflow_graph(workflow_id, webhook_data, api_key, client_factory=factory)
+    # Claim commits before the graph can reach a broker. A crash or exception
+    # leaves it claimed, never automatically re-armed or replayed.
+    result = _execute_workflow_graph(workflow_id, webhook_data, api_key, client_factory=factory)
+    if result.get('execution_id'):
+        from database.account_flow_trigger_db import consume_account_trigger
+        from database.flow_db import deactivate_workflow
+        try:
+            if not consume_account_trigger(workflow_id, owner, arm):
+                raise RuntimeError('Could not consume one-shot claim')
+            if deactivate_workflow(workflow_id, owner_username=owner) is None:
+                raise RuntimeError('Could not stand down completed one-shot workflow')
+        except Exception:
+            result['cleanup_pending'] = True
+    return result

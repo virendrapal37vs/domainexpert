@@ -32,7 +32,13 @@ def account_flow_trigger_allowed(workflow_id, api_key=None):
             return False
         if api_key is None:
             api_key = flow_db.get_workflow_api_key(workflow)
-        validate_flow_execution_owner(workflow_id, api_key)
+        owner = validate_flow_execution_owner(workflow_id, api_key)
+        if any(n.get('type') in ('priceAlert','orderUpdateTrigger')
+               and (n.get('data') or {}).get('trigger','once') == 'once'
+               for n in (workflow.nodes or [])):
+            from database.account_flow_trigger_db import get_account_trigger_arm
+            if not get_account_trigger_arm(workflow_id, owner):
+                return False
     except Exception:
         return False
     finally:
@@ -47,8 +53,14 @@ def account_monitor_restore_owner(workflow_id, api_key, data):
     from utils.strategy_account_guard import shared_strategy_disabled
     if not shared_strategy_disabled():
         return None
-    if data.get("trigger", "once") != "every_time":
-        raise ValueError("Account one-shot monitor recovery is not supported")
+    mode = data.get("trigger", "once")
+    if mode not in ("once", "every_time"):
+        raise ValueError("Unsupported account monitor trigger mode")
     if not account_flow_trigger_allowed(workflow_id, api_key):
         raise ValueError("Account monitor recovery is disabled or credentials are inactive")
-    return validate_flow_execution_owner(workflow_id, api_key)
+    owner = validate_flow_execution_owner(workflow_id, api_key)
+    if mode == "once":
+        from database.account_flow_trigger_db import get_account_trigger_arm
+        if not get_account_trigger_arm(workflow_id, owner):
+            raise ValueError("One-shot trigger is claimed, consumed or has no durable arm")
+    return owner

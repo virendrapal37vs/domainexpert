@@ -16,8 +16,14 @@ def register_account_trigger(workflow, trigger, owner, api_key):
     if workflow.owner_username != owner or validate_flow_execution_owner(workflow.id, api_key) != owner:
         raise ValueError('Trigger requires its workflow owner')
     kind, data = trigger['type'], trigger.get('data') or {}
-    if kind in ('priceAlert','orderUpdateTrigger') and data.get('trigger','once') != 'every_time':
-        raise ValueError('Account price/order triggers currently require every_time mode')
+    if kind in ('priceAlert','orderUpdateTrigger'):
+        mode = data.get('trigger','once')
+        if mode not in ('once','every_time'):
+            raise ValueError('Unsupported account monitor trigger mode')
+        if mode == 'once':
+            from database.account_flow_trigger_db import get_account_trigger_arm
+            if not get_account_trigger_arm(workflow.id, owner):
+                raise ValueError('One-shot trigger requires an unclaimed durable arm')
     if kind == 'start':
         schedule = data.get('scheduleType')
         if schedule and schedule != 'manual':
@@ -83,6 +89,20 @@ def activate_account_workflow(workflow_id, owner, api_key):
             return {'error':'Workflow requires a trigger'},400
         if workflow.is_active:
             return {'status':'already_active'},200
+        if trigger['type'] in ('priceAlert','orderUpdateTrigger'):
+            mode = (trigger.get('data') or {}).get('trigger','once')
+            if mode not in ('once','every_time'):
+                return {'error':'Unsupported account monitor trigger mode'},400
+            if mode == 'once':
+                from database.account_flow_trigger_db import create_account_trigger_arm, get_account_trigger_arm
+                try:
+                    arm = get_account_trigger_arm(workflow_id, owner)
+                    if arm is None:
+                        arm = create_account_trigger_arm(workflow_id, owner)
+                    if arm is None:
+                        return {'error':'One-shot trigger already claimed or consumed; reconciliation required'},409
+                except Exception:
+                    return {'error':'Could not persist one-shot trigger arm'},503
         try:
             # Remove any stale inactive registrations before persisting active.
             remove_account_triggers(workflow_id, owner)

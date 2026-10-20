@@ -108,11 +108,11 @@ def test_unverified_order_identity_cannot_fire(monitors,case):
     s.clients['b-key'].place_order.assert_not_called()
 
 
-def test_oneshot_account_trigger_remains_explicitly_unsupported(monitors):
+def test_oneshot_account_trigger_requires_durable_arm(monitors):
     m=monitors;s=m.s
     m.arm('priceAlert')
     wf=s.db.get_workflow(s.a)
     nodes=[{**wf.nodes[0],'data':{**wf.nodes[0]['data'],'trigger':'once'}},wf.nodes[1]]
     s.db.update_workflow(s.a,nodes=nodes)
-    assert s.engine.execute_workflow(s.a,api_key='a-key')['code']=='FLOW_NODE_NOT_ACCOUNT_READY'
+    assert s.engine.execute_workflow(s.a,api_key='a-key')['code']=='FLOW_TRIGGER_NOT_ARMED'
     s.clients['a-key'].place_order.assert_not_called()

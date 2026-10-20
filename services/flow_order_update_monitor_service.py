@@ -379,6 +379,19 @@ class FlowOrderUpdateMonitor:
         watch is restored on every restart by restore_order_update_watches and
         fires again on the next matching order.
         """
+        from utils.strategy_account_guard import shared_strategy_disabled
+        if shared_strategy_disabled():
+            # The execution boundary persists consumption/inactive state before
+            # local retirement. Never call the legacy ownerless DB writer.
+            from database.flow_db import get_workflow
+            from database.account_flow_trigger_db import get_account_trigger_state
+            row = get_workflow(watch.workflow_id)
+            owner = getattr(row, 'owner_username', None)
+            if owner and get_account_trigger_state(watch.workflow_id, owner) == 'consumed':
+                with self._watches_lock:
+                    if self._watches.get(watch.workflow_id) is watch:
+                        self._watches.pop(watch.workflow_id, None)
+            return
         workflow_id = watch.workflow_id
         with self._watches_lock:
             if self._watches.get(workflow_id) is not watch:
