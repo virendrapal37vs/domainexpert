@@ -867,3 +867,23 @@ reconciliation. Ten additional route-body/SQLite/CSRF tests cover owner isolatio
 immutable repeated requests, invalid/active/unarmed writes, anonymous and CSRF
 rejection, hidden identities and unchanged claims. Outer Flow rollout/restricted
 staging guards remain unchanged. The frontend TypeScript build also passes.
+
+### Auxiliary Flow routes: import/export/replace and webhook settings
+
+Eight ID-based route bodies now resolve the authenticated workflow owner before
+exporting graphs, reading webhook secrets, enabling/disabling webhooks, rotating
+credentials, changing auth type or replacing graphs. Database webhook helpers
+also require explicit ownership in per-account mode; legacy single-user behavior
+remains behind the legacy mode. Import creates a normal inactive workflow under
+the session owner and ignores supplied ownership/lifecycle/key fields. Replace
+passes owner to DB update and rejects active account graph replacement (409).
+GET webhook-info does not initialize credentials in account mode: a protected POST
+must do that. Shared monitor summary remains blocked until account projection is
+implemented. The outer Flow rollout guard and restricted staging are unchanged.
+
+Fourteen added HTTP route-body/SQLite/CSRF tests check cross-owner reads/writes,
+correct owner behavior, import spoofing, lifecycle protection, read-only GET,
+anonymous/CSRF rejection, direct helper ownership and blocked monitor summary.
+They do not enable the deployed Flow blueprint or verify live webhook execution.
+Token-plus-secret rotation still uses the existing separate writes; this patch
+scopes their owner and does not add a cross-write atomic rotation transaction.

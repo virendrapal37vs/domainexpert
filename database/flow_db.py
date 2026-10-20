@@ -396,10 +396,17 @@ def deactivate_workflow(workflow_id, *, owner_username=None):
     return update_workflow(workflow_id, is_active=False)
 
 
-def regenerate_webhook_token(workflow_id):
+def _webhook_owned_workflow(workflow_id, owner_username):
+    from utils.strategy_account_guard import shared_strategy_disabled
+    if owner_username is not None or shared_strategy_disabled():
+        return get_account_workflow(workflow_id, _verified_workflow_owner(owner_username))
+    return get_workflow(workflow_id)
+
+
+def regenerate_webhook_token(workflow_id, *, owner_username=None):
     """Regenerate webhook token for a workflow"""
     try:
-        workflow = get_workflow(workflow_id)
+        workflow = _webhook_owned_workflow(workflow_id, owner_username)
         if not workflow:
             return None
 
@@ -418,10 +425,10 @@ def regenerate_webhook_token(workflow_id):
         return None
 
 
-def regenerate_webhook_secret(workflow_id):
+def regenerate_webhook_secret(workflow_id, *, owner_username=None):
     """Regenerate webhook secret for a workflow"""
     try:
-        workflow = get_workflow(workflow_id)
+        workflow = _webhook_owned_workflow(workflow_id, owner_username)
         if not workflow:
             return None
 
@@ -443,28 +450,34 @@ def regenerate_webhook_secret(workflow_id):
         return None
 
 
-def enable_webhook(workflow_id):
+def enable_webhook(workflow_id, *, owner_username=None):
     """Enable webhook for a workflow"""
-    return update_workflow(workflow_id, webhook_enabled=True)
+    if _webhook_owned_workflow(workflow_id, owner_username) is None:
+        return None
+    return update_workflow(workflow_id, owner_username=owner_username, webhook_enabled=True)
 
 
-def disable_webhook(workflow_id):
+def disable_webhook(workflow_id, *, owner_username=None):
     """Disable webhook for a workflow"""
-    return update_workflow(workflow_id, webhook_enabled=False)
+    if _webhook_owned_workflow(workflow_id, owner_username) is None:
+        return None
+    return update_workflow(workflow_id, owner_username=owner_username, webhook_enabled=False)
 
 
-def set_webhook_auth_type(workflow_id, auth_type):
+def set_webhook_auth_type(workflow_id, auth_type, *, owner_username=None):
     """Set webhook auth type for a workflow"""
     if auth_type not in ["payload", "url"]:
         logger.error(f"Invalid webhook auth type: {auth_type}")
         return None
-    return update_workflow(workflow_id, webhook_auth_type=auth_type)
+    if _webhook_owned_workflow(workflow_id, owner_username) is None:
+        return None
+    return update_workflow(workflow_id, owner_username=owner_username, webhook_auth_type=auth_type)
 
 
-def ensure_webhook_credentials(workflow_id):
+def ensure_webhook_credentials(workflow_id, *, owner_username=None):
     """Ensure webhook token and secret exist for a workflow"""
     try:
-        workflow = get_workflow(workflow_id)
+        workflow = _webhook_owned_workflow(workflow_id, owner_username)
         if not workflow:
             return False
 

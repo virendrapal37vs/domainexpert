@@ -943,17 +943,25 @@ def get_webhook_base_url():
 @check_session_validity
 def get_webhook_info(workflow_id):
     """Get webhook configuration for a workflow"""
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    if owner is not None and get_account_workflow(workflow_id, owner) is None:
+        return jsonify({"error": "Workflow not found"}),404
+
     from database.flow_db import ensure_webhook_credentials, get_workflow
 
-    workflow = get_workflow(workflow_id)
+    workflow = get_account_workflow(workflow_id, owner) if owner is not None else get_workflow(workflow_id)
     if not workflow:
         return jsonify({"error": "Workflow not found"}), 404
 
     # Ensure webhook token and secret exist
-    ensure_webhook_credentials(workflow_id)
+    if owner is None:
+        ensure_webhook_credentials(workflow_id)
+    elif not workflow.webhook_token or not workflow.webhook_secret:
+        return jsonify({'error':'Enable webhook to initialize credentials'}),409
 
     # Refresh workflow to get updated credentials
-    workflow = get_workflow(workflow_id)
+    workflow = get_account_workflow(workflow_id, owner) if owner is not None else get_workflow(workflow_id)
 
     # Build webhook URLs
     base_url = get_webhook_base_url()
@@ -979,17 +987,23 @@ def get_webhook_info(workflow_id):
 @check_session_validity
 def enable_webhook(workflow_id):
     """Enable webhook for a workflow"""
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    if owner is not None and get_account_workflow(workflow_id, owner) is None:
+        return jsonify({"error": "Workflow not found"}),404
+
     from database.flow_db import enable_webhook, ensure_webhook_credentials, get_workflow
 
     # Ensure credentials exist before enabling
-    ensure_webhook_credentials(workflow_id)
+    if not ensure_webhook_credentials(workflow_id, owner_username=owner):
+        return jsonify({"error":"Failed to initialize webhook credentials"}),500
 
-    result = enable_webhook(workflow_id)
+    result = enable_webhook(workflow_id, owner_username=owner)
     if not result:
         return jsonify({"error": "Failed to enable webhook"}), 500
 
     # Get updated workflow and return full webhook info
-    workflow = get_workflow(workflow_id)
+    workflow = get_account_workflow(workflow_id, owner) if owner is not None else get_workflow(workflow_id)
     base_url = get_webhook_base_url()
     webhook_url = f"{base_url}/flow/webhook/{workflow.webhook_token}"
     auth_type = workflow.webhook_auth_type or "payload"
@@ -1015,9 +1029,14 @@ def enable_webhook(workflow_id):
 @check_session_validity
 def disable_webhook(workflow_id):
     """Disable webhook for a workflow"""
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    if owner is not None and get_account_workflow(workflow_id, owner) is None:
+        return jsonify({"error": "Workflow not found"}),404
+
     from database.flow_db import disable_webhook
 
-    result = disable_webhook(workflow_id)
+    result = disable_webhook(workflow_id, owner_username=owner)
     if result:
         return jsonify({"status": "success", "message": "Webhook disabled"})
     return jsonify({"error": "Failed to disable webhook"}), 500
@@ -1027,20 +1046,25 @@ def disable_webhook(workflow_id):
 @check_session_validity
 def regenerate_webhook(workflow_id):
     """Regenerate webhook token and secret"""
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    if owner is not None and get_account_workflow(workflow_id, owner) is None:
+        return jsonify({"error": "Workflow not found"}),404
+
     from database.flow_db import get_workflow, regenerate_webhook_secret, regenerate_webhook_token
 
-    new_token = regenerate_webhook_token(workflow_id)
+    new_token = regenerate_webhook_token(workflow_id, owner_username=owner)
     if not new_token:
         return jsonify({"error": "Failed to regenerate token"}), 500
 
     # Checked, not just called. The secret's return value was discarded, so a
     # failed rotation still reported success and the caller kept using a secret
     # they believed had been replaced.
-    if not regenerate_webhook_secret(workflow_id):
+    if not regenerate_webhook_secret(workflow_id, owner_username=owner):
         return jsonify({"error": "Failed to regenerate secret"}), 500
 
     # Get updated workflow and return full webhook info
-    workflow = get_workflow(workflow_id)
+    workflow = get_account_workflow(workflow_id, owner) if owner is not None else get_workflow(workflow_id)
     base_url = get_webhook_base_url()
     webhook_url = f"{base_url}/flow/webhook/{workflow.webhook_token}"
 
@@ -1060,9 +1084,14 @@ def regenerate_webhook(workflow_id):
 @check_session_validity
 def regenerate_webhook_secret_route(workflow_id):
     """Regenerate webhook secret only"""
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    if owner is not None and get_account_workflow(workflow_id, owner) is None:
+        return jsonify({"error": "Workflow not found"}),404
+
     from database.flow_db import get_workflow, regenerate_webhook_secret
 
-    new_secret = regenerate_webhook_secret(workflow_id)
+    new_secret = regenerate_webhook_secret(workflow_id, owner_username=owner)
     if not new_secret:
         return jsonify({"error": "Failed to regenerate secret"}), 500
 
@@ -1075,17 +1104,24 @@ def regenerate_webhook_secret_route(workflow_id):
 @check_session_validity
 def set_webhook_auth(workflow_id):
     """Set webhook auth type"""
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    if owner is not None and get_account_workflow(workflow_id, owner) is None:
+        return jsonify({"error": "Workflow not found"}),404
+
     from database.flow_db import get_workflow, set_webhook_auth_type
 
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data,dict):
+        return jsonify({"error":"JSON object required"}),400
     auth_type = data.get("auth_type", "payload")
 
-    result = set_webhook_auth_type(workflow_id, auth_type)
+    result = set_webhook_auth_type(workflow_id, auth_type, owner_username=owner)
     if not result:
         return jsonify({"error": "Invalid auth type"}), 400
 
     # Get updated workflow and return full webhook info
-    workflow = get_workflow(workflow_id)
+    workflow = get_account_workflow(workflow_id, owner) if owner is not None else get_workflow(workflow_id)
     base_url = get_webhook_base_url()
     webhook_url = f"{base_url}/flow/webhook/{workflow.webhook_token}"
 
@@ -1344,6 +1380,8 @@ def trigger_webhook_with_symbol(token, symbol):
 @check_session_validity
 def get_monitor_status():
     """Get price monitor and order-update monitor status"""
+    if _flow_account_owner() is not None:
+        return jsonify({'error':'Account-scoped monitor status is not available'}),503
     from services.flow_order_update_monitor_service import get_flow_order_update_monitor
     from services.flow_price_monitor_service import get_flow_price_monitor
 
@@ -1360,9 +1398,14 @@ def get_monitor_status():
 @check_session_validity
 def export_workflow(workflow_id):
     """Export a workflow"""
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    if owner is not None and get_account_workflow(workflow_id, owner) is None:
+        return jsonify({"error": "Workflow not found"}),404
+
     from database.flow_db import get_workflow
 
-    workflow = get_workflow(workflow_id)
+    workflow = get_account_workflow(workflow_id, owner) if owner is not None else get_workflow(workflow_id)
     if not workflow:
         return jsonify({"error": "Workflow not found"}), 404
 
@@ -1390,8 +1433,9 @@ def import_workflow():
     from database.flow_db import create_workflow
     from services.flow_workflow_validator import migrate_legacy_node_data, validate_workflow
 
-    data = request.get_json()
-    if not data:
+    owner = _flow_account_owner()
+    data = request.get_json(silent=True)
+    if not isinstance(data,dict) or not data:
         return jsonify({"error": "No data provided"}), 400
 
     # Upgrade legacy node payloads before validating, so an older exported
@@ -1419,7 +1463,7 @@ def import_workflow():
     edges = data.get("edges", [])
 
     workflow = create_workflow(
-        name=f"{name} (imported)", description=description, nodes=nodes, edges=edges
+        name=f"{name} (imported)", description=description, nodes=nodes, edges=edges, owner_username=owner
     )
 
     if workflow:
@@ -1443,6 +1487,11 @@ def replace_workflow(workflow_id):
     Held to import's rules, not save's: a JSON pasted here is presented as a
     finished workflow, so completeness is enforced.
     """
+    owner = _flow_account_owner()
+    from database.flow_db import get_account_workflow
+    if owner is not None and get_account_workflow(workflow_id, owner) is None:
+        return jsonify({"error": "Workflow not found"}),404
+
     from database.flow_db import get_workflow, update_workflow
     from services.flow_workflow_validator import (
         migrate_legacy_node_data,
@@ -1450,9 +1499,12 @@ def replace_workflow(workflow_id):
         validate_workflow,
     )
 
-    workflow = get_workflow(workflow_id)
+    workflow = get_account_workflow(workflow_id, owner) if owner is not None else get_workflow(workflow_id)
     if not workflow:
         return jsonify({"error": "Workflow not found"}), 404
+
+    if owner is not None and workflow.is_active:
+        return jsonify({'error':'Deactivate workflow before replacing its graph'}),409
 
     data = request.get_json()
     if not data:
@@ -1507,7 +1559,7 @@ def replace_workflow(workflow_id):
     if payload.get("description") is not None:
         fields["description"] = payload["description"]
 
-    updated = update_workflow(workflow_id, **fields)
+    updated = update_workflow(workflow_id, owner_username=owner, **fields)
     if not updated:
         return jsonify({"error": "Failed to replace workflow"}), 500
 
