@@ -907,6 +907,13 @@ function FlowEditorContent() {
         </div>
       </div>
 
+      {workflow?.one_shot_status && (
+        <div role="status" className="border-b border-border bg-muted/50 px-4 py-3 text-sm">
+          <span className="font-medium">One-shot: {workflow.one_shot_status.label}</span>
+          <p className="mt-1 text-muted-foreground">{workflow.one_shot_status.message}</p>
+        </div>
+      )}
+
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Node Palette - Left Sidebar */}

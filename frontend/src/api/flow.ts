@@ -15,6 +15,11 @@ export interface Workflow {
   nodes: Node[]
   edges: Edge[]
   is_active: boolean
+  one_shot_status?: {
+    state: 'unarmed' | 'armed' | 'claimed' | 'consumed' | 'unavailable'
+    label: string
+    message: string
+  } | null
   schedule_job_id: string | null
   webhook_token: string | null
   webhook_secret: string | null

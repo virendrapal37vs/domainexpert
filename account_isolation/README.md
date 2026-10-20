@@ -831,3 +831,20 @@ This is an interpreter/process crash test, not a reboot/systemd or live-broker
 integration test. It confirms fail-closed replay prevention, not guaranteed order
 completion. Interrupted claims still require explicit outcome reconciliation;
 there is no automatic re-arm. Running staging/production settings are unchanged.
+
+### Read-only one-shot status in workflow detail
+
+Account-owned workflow detail includes `one_shot_status` for once price/order
+monitors: unarmed, armed, claimed or consumed (unknown stored values show
+unavailable). The payload contains only state, label and explanatory message;
+activation identity and credentials are never returned. Claimed wording covers
+both an in-progress run and an uncertain interrupted outcome, with no automatic
+retry. Consumed does not imply successful broker execution. Reads never reset,
+consume or re-arm the durable state. Other owners/legacy workflows remain hidden.
+
+The Flow editor renders this status beneath its toolbar. Eight HTTP route-body
+and SQLite tests cover ownership, anonymous rejection, state projection/no secret
+disclosure and unchanged state after reads; outer rollout/session decorators are
+not bypassed in the deployed app. TypeScript project build checks the frontend
+change. Public Flow rollout and restricted staging guards remain unchanged, so
+this UI is prepared for later rollout rather than exposed in restricted staging.

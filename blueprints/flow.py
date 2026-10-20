@@ -193,6 +193,11 @@ def get_workflow(workflow_id):
     if not workflow:
         return jsonify({"error": "Workflow not found"}), 404
 
+    one_shot_status = None
+    if owner is not None:
+        from services.account_flow_trigger_status import get_account_one_shot_status
+        one_shot_status = get_account_one_shot_status(workflow_id, owner)
+
     return jsonify(
         {
             "id": workflow.id,
@@ -201,6 +206,7 @@ def get_workflow(workflow_id):
             "nodes": workflow.nodes,
             "edges": workflow.edges,
             "is_active": workflow.is_active,
+            "one_shot_status": one_shot_status,
             "schedule_job_id": workflow.schedule_job_id,
             "webhook_token": workflow.webhook_token,
             "webhook_secret": workflow.webhook_secret,
