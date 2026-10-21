@@ -939,3 +939,16 @@ called. MTM refresh and scheduled balance reset are deliberately skipped.
 This does not test order placement, simulated fills, HTTP authentication,
 concurrent execution, settlement or broker acceptance. It enables no runtime flag
 and needs no staging restart or frontend rebuild.
+
+### Offline placement and fill integration
+`test_sandbox_account_fills.py` uses the actual OrderManager placement path and
+ExecutionEngine processing/fill/position code against disposable SQLite. Two
+owners buy the same synthetic CASH symbol in CNC with different quantities.
+Fixed prices keep their LIMIT orders pending, then fill each independently.
+Assertions cover durable order status, remaining/filled quantities, per-owner
+trades and positions, blocked margin/cash, and sequential duplicate-fill replay.
+Quote/auth access and socket connections are forbidden; symbol metadata is a
+synthetic fixture. Events are captured rather than delivered; websocket engine
+lookups return stopped. This is not live trading, concurrent fill validation,
+sell/close/settlement verification, HTTP authorization or a public rollout gate.
+It changes tests/docs only; no flags, frontend build or restart are needed.
