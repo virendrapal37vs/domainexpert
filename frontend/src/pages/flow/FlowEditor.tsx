@@ -1,3 +1,4 @@
+import { useFlowEditingPreview } from '@/components/layout/FlowLayout'
 import { OneShotReview } from '@/components/flow/OneShotReview'
 // pages/flow/FlowEditor.tsx
 // Flow visual workflow editor page
@@ -116,6 +117,7 @@ function withDefaultOutputVariables(nodes: Node[]): { nodes: Node[]; repaired: b
 const getNodeId = () => `node_${nodeId++}`
 
 function FlowEditorContent() {
+  const editingPreview = useFlowEditingPreview()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -849,7 +851,7 @@ function FlowEditorContent() {
               variant="outline"
               size="sm"
               onClick={() => deactivateMutation.mutate()}
-              disabled={deactivateMutation.isPending || saveMutation.isPending}
+              disabled={editingPreview || deactivateMutation.isPending || saveMutation.isPending}
             >
               {deactivateMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -862,7 +864,7 @@ function FlowEditorContent() {
             <Button
               size="sm"
               onClick={() => activateMutation.mutate()}
-              disabled={activateMutation.isPending || saveMutation.isPending}
+              disabled={editingPreview || activateMutation.isPending || saveMutation.isPending}
             >
               {activateMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -881,7 +883,7 @@ function FlowEditorContent() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() => executeMutation.mutate()}
-                disabled={executeMutation.isPending || saveMutation.isPending}
+                disabled={editingPreview || executeMutation.isPending || saveMutation.isPending}
               >
                 Run Now
               </DropdownMenuItem>

@@ -14,6 +14,7 @@ from flask import Blueprint, jsonify, request, session
 from database.auth_db import get_api_key_for_tradingview
 from limiter import limiter
 from utils.session import check_session_validity
+from utils.flow_editing_preview import flow_session_required
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,9 @@ flow_bp = Blueprint("flow", __name__, url_prefix="/flow")
 
 @flow_bp.before_request
 def require_account_safe_flow():
+    from utils.flow_editing_preview import editing_request_allowed
+    if editing_request_allowed():
+        return None
     from utils.strategy_account_guard import shared_strategy_disabled
     if shared_strategy_disabled():
         return jsonify({"status": "error", "code": "FLOW_ACCOUNT_ISOLATION_PENDING",
@@ -58,7 +62,7 @@ def _flow_account_owner():
 
 
 @flow_bp.route("/api/workflows", methods=["GET"])
-@check_session_validity
+@flow_session_required
 def list_workflows():
     """List all workflows"""
     from database.flow_db import get_all_workflows, get_workflow_executions
@@ -93,7 +97,7 @@ def list_workflows():
 
 
 @flow_bp.route("/api/workflows", methods=["POST"])
-@check_session_validity
+@flow_session_required
 def create_workflow():
     """Create a new workflow"""
     from database.flow_db import create_workflow
@@ -182,7 +186,7 @@ def create_workflow():
 
 
 @flow_bp.route("/api/workflows/<int:workflow_id>", methods=["GET"])
-@check_session_validity
+@flow_session_required
 def get_workflow(workflow_id):
     """Get a workflow by ID"""
     from database.flow_db import get_workflow
@@ -219,7 +223,7 @@ def get_workflow(workflow_id):
 
 
 @flow_bp.route("/api/workflows/<int:workflow_id>/trigger-review", methods=["POST"])
-@check_session_validity
+@flow_session_required
 def record_trigger_review(workflow_id):
     """Record the session owner's observation. Global CSRF protection applies."""
     from database.flow_db import get_account_workflow
@@ -340,7 +344,7 @@ def _existing_for_trigger_check(workflow_id):
 
 
 @flow_bp.route("/api/workflows/<int:workflow_id>", methods=["PUT"])
-@check_session_validity
+@flow_session_required
 def update_workflow(workflow_id):
     """Update a workflow"""
     from database.flow_db import update_workflow
@@ -890,7 +894,7 @@ def execute_workflow_now(workflow_id):
 
 
 @flow_bp.route("/api/workflows/<int:workflow_id>/executions", methods=["GET"])
-@check_session_validity
+@flow_session_required
 def get_workflow_executions(workflow_id):
     """Get execution history for a workflow"""
     from database.flow_db import get_workflow_executions
@@ -1395,7 +1399,7 @@ def get_monitor_status():
 
 
 @flow_bp.route("/api/workflows/<int:workflow_id>/export", methods=["GET"])
-@check_session_validity
+@flow_session_required
 def export_workflow(workflow_id):
     """Export a workflow"""
     owner = _flow_account_owner()
@@ -1422,7 +1426,7 @@ def export_workflow(workflow_id):
 
 
 @flow_bp.route("/api/workflows/import", methods=["POST"])
-@check_session_validity
+@flow_session_required
 def import_workflow():
     """Import a workflow.
 
@@ -1475,7 +1479,7 @@ def import_workflow():
 
 
 @flow_bp.route("/api/workflows/<int:workflow_id>/replace", methods=["POST"])
-@check_session_validity
+@flow_session_required
 def replace_workflow(workflow_id):
     """Replace an existing workflow's graph from JSON, in place.
 

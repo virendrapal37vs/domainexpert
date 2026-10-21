@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { Providers } from '@/app/providers'
 import { AuthSync } from '@/components/auth/AuthSync'
+import { FlowLayout } from '@/components/layout/FlowLayout'
 import { FullWidthLayout } from '@/components/layout/FullWidthLayout'
 import { Layout } from '@/components/layout/Layout'
 import { PageLoader } from '@/components/ui/page-loader'
@@ -275,8 +276,6 @@ function App() {
                   element={<ConfigureChartinkSymbols />}
                 />
                 {/* Flow Editor */}
-                <Route path="/flow" element={<FlowIndex />} />
-                <Route path="/flow/shortcuts" element={<FlowKeyboardShortcuts />} />
                 {/* Leverage Configuration (crypto brokers only) */}
                 <Route path="/leverage" element={<LeverageRoute />} />
                 {/* Phase 7: Admin */}
@@ -325,6 +324,11 @@ function App() {
                 <Route path="/historify/charts" element={<HistorifyCharts />} />
                 <Route path="/historify/charts/:symbol" element={<HistorifyCharts />} />
                 {/* Flow Editor (full-width for canvas) */}
+              </Route>
+
+              <Route element={<FlowLayout />}>
+                <Route path="/flow" element={<FlowIndex />} />
+                <Route path="/flow/shortcuts" element={<FlowKeyboardShortcuts />} />
                 <Route path="/flow/editor/:id" element={<FlowEditor />} />
               </Route>
 

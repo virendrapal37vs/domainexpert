@@ -57,6 +57,7 @@ const allBrokers = [
 ] as const
 
 interface BrokerConfig {
+  flow_editing_preview?: boolean
   staging_restricted?: boolean
   per_user_credentials?: boolean
   credentials_configured?: boolean
@@ -295,6 +296,11 @@ export default function BrokerSelect() {
                 <Alert className="mb-4">
                   <AlertDescription>Staging: you can save your credentials. Broker connections and trading are disabled.</AlertDescription>
                 </Alert>
+              )}
+              {brokerConfig?.flow_editing_preview && (
+                <Button asChild variant="outline" className="mb-4 w-full">
+                  <a href="/flow">Open workflow editing preview</a>
+                </Button>
               )}
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">

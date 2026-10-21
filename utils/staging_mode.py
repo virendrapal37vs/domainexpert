@@ -56,6 +56,12 @@ STAGING_ENDPOINTS = frozenset({
 def install_staging_gate(app):
     @app.before_request
     def restricted_staging_routes():
+        from utils.flow_editing_preview import editing_request_allowed
+        if editing_request_allowed():
+            from utils.account_access import current_account
+            if current_account() is None:
+                return jsonify(error="Sign in first"),401
+            return None
         if staging_safe() and request.endpoint not in STAGING_ENDPOINTS:
             return jsonify(status="error", message="Staging permits account setup, login and credential storage only. Broker connections and trading are blocked."), 403
 

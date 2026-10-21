@@ -887,3 +887,31 @@ anonymous/CSRF rejection, direct helper ownership and blocked monitor summary.
 They do not enable the deployed Flow blueprint or verify live webhook execution.
 Token-plus-secret rotation still uses the existing separate writes; this patch
 scopes their owner and does not add a cross-write atomic rotation transaction.
+
+### Default-off staging workflow editing preview
+
+`DOMAINXPERT_FLOW_EDITING_PREVIEW=true` permits only an explicit endpoint list,
+and only when restricted staging and per-user Groww mode are also true. Password
+account identity (current_account) is required before both API and SPA access;
+only reviewed editing API routes use the pre-broker account session wrapper.
+Normal broker-session checks remain on other routes and outside this preview.
+Allowed operations are own list/create/read/update/import/export/inactive replace,
+history and immutable review. Delete, lifecycle activation/deactivation, Run Now,
+webhook configuration/entrypoints, shared monitor summaries, broker transports
+and sockets remain blocked. Restricted staging independently forces account Flow
+execution off even if execution flags are accidentally true. Background startup
+remains disabled. This is not a public Flow rollout or trading switch.
+
+The account page links to the preview only when enabled. Flow routes use a preview
+layout without SocketProvider or broker-login prerequisite; otherwise normal
+broker layouts are retained. A persistent banner identifies editing-only mode;
+lifecycle/delete/webhook controls are disabled. Pending Flow queries are cancelled
+and private Flow cache removed before a different user's outlet mounts.
+
+Thirteen stacked staging/Flow-gate/CSRF/real-SQLite tests cover password-only
+editing, other-owner rejection, three-flag admission, anonymous/CSRF rejection and
+unreachable execution/transport handlers. Two frontend tests check account cache
+isolation and normal-layout fallback. TypeScript checks the changed UI. These
+are component/request tests; real browser staging smoke verification remains the
+next step after installing, rebuilding and explicitly enabling the preview flag.
+Keep DOMAINXPERT_STAGING_SAFE=true; leave account execution/mode flags off.

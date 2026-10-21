@@ -1,3 +1,4 @@
+import { useFlowEditingPreview } from '@/components/layout/FlowLayout'
 // pages/flow/FlowIndex.tsx
 // Flow workflow list page
 
@@ -79,6 +80,7 @@ function StatusIcon({ status }: { status: string | null }) {
 }
 
 function WorkflowCard({ workflow }: { workflow: WorkflowListItem }) {
+  const editingPreview = useFlowEditingPreview()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [isWebhookOpen, setIsWebhookOpen] = useState(false)
@@ -227,7 +229,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowListItem }) {
                 >
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem
+                <DropdownMenuItem disabled={editingPreview}
                   onClick={(e) => {
                     e.stopPropagation()
                     setIsWebhookOpen(true)
@@ -237,7 +239,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowListItem }) {
                   Webhook
                 </DropdownMenuItem>
                 {workflow.is_active ? (
-                  <DropdownMenuItem
+                  <DropdownMenuItem disabled={editingPreview}
                     onClick={(e) => {
                       e.stopPropagation()
                       deactivateMutation.mutate()
@@ -247,7 +249,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowListItem }) {
                     Deactivate
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem
+                  <DropdownMenuItem disabled={editingPreview}
                     onClick={(e) => {
                       e.stopPropagation()
                       activateMutation.mutate()
@@ -258,7 +260,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowListItem }) {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
+                <DropdownMenuItem disabled={editingPreview}
                   className="text-destructive"
                   onClick={(e) => {
                     e.stopPropagation()
