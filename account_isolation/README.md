@@ -926,3 +926,16 @@ No executor or credential reader is imported by the inspection service.
 Reports are marked stale after draft changes. Limit: 500 nodes and 2000 edges.
 Node configuration and validator received values are omitted from reports.
 This does not verify broker acceptance, fills, account funds or runtime behavior.
+
+### Offline sandbox SQLite ownership check
+`test_sandbox_account_sqlite.py` runs actual OrderManager, PositionManager and
+FundManager methods in a fresh subprocess and temporary SQLite database. It
+seeds distinct pending paper orders and same-symbol positions for two owners,
+verifies each orderbook and position read, rejects cross-owner order status,
+modify and cancel calls, and checks real margin changes affect only their owner.
+Rows are re-read after reopening the session to check rejected writes persisted
+no changes. Socket connections and quote/symbol provider boundaries raise if
+called. MTM refresh and scheduled balance reset are deliberately skipped.
+This does not test order placement, simulated fills, HTTP authentication,
+concurrent execution, settlement or broker acceptance. It enables no runtime flag
+and needs no staging restart or frontend rebuild.
