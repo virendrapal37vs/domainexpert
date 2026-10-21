@@ -3,13 +3,15 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_two_accounts_place_and_fill_without_crossing_books(tmp_path):
+@pytest.mark.parametrize('close_price', [None, 110, 70], ids=['buy-only', 'close-profit', 'close-loss'])
+def test_two_accounts_place_and_fill_without_crossing_books(tmp_path, close_price):
     code = r'''
-import logging, socket, sys
+import logging, socket, sys, os
 from types import ModuleType, SimpleNamespace
 from decimal import Decimal
 
@@ -24,7 +26,7 @@ def stub(name, **attrs):
     sys.modules[name] = module
 
 stub('utils.logging', get_logger=logging.getLogger)
-stub('database.token_db', get_symbol_info=lambda *a: SimpleNamespace(lotsize=1))
+stub('database.token_db', get_symbol_info=lambda *a: SimpleNamespace(lotsize=1, contract_value=1))
 stub('database.symbol', SymToken=object)
 stub('database.auth_db', get_auth_token_broker=forbidden)
 stub('services.quotes_service', get_quotes=forbidden, get_multiquotes=forbidden)
@@ -95,13 +97,58 @@ for owner, qty in [('alice', 3), ('bob', 7)]:
     assert db.SandboxPositions.query.filter_by(user_id=owner).one().quantity == qty
     assert funds[owner].get_funds()['utiliseddebits'] == qty * 90
 assert [owner for kind, owner in events if kind == 'fill'] == ['alice', 'bob']
+
+if os.environ.get('PAPER_CLOSE_PRICE'):
+    close_price = int(os.environ['PAPER_CLOSE_PRICE'])
+    bob_before = funds['bob'].get_funds().copy()
+    ok, response, status = OrderManager('alice').place_order({
+        'symbol': 'BHEL', 'exchange': 'NSE', 'action': 'SELL', 'quantity': 3,
+        'price': close_price, 'price_type': 'LIMIT', 'product': 'CNC',
+        'strategy': 'synthetic-account-close'}, prefetched_quote={'ltp': close_price - 1})
+    assert ok and status == 200, response
+    closing_id = response['orderid']
+    row = db.SandboxOrders.query.filter_by(orderid=closing_id).one()
+    assert row.order_status == 'open'
+    assert funds['bob'].get_funds() == bob_before
+    engine._process_order(row, {'ltp': close_price, 'low': 60, 'high': 120})
+    db.db_session.remove()
+    def verify_close():
+        closed = db.SandboxPositions.query.filter_by(user_id='alice').one()
+        pnl = Decimal(3 * (close_price - 90))
+        assert closed.quantity == 0 and closed.margin_blocked == 0
+        assert closed.accumulated_realized_pnl == pnl
+        assert closed.today_realized_pnl == pnl
+        actual = funds['alice'].get_funds()
+        assert actual['availablecash'] == capital + float(pnl), actual
+        assert actual['utiliseddebits'] == 0
+        assert actual['total_realized_pnl'] == float(pnl)
+        assert actual['today_realized_pnl'] == float(pnl)
+        assert funds['bob'].get_funds() == bob_before
+        bob_pos = db.SandboxPositions.query.filter_by(user_id='bob').one()
+        assert bob_pos.quantity == 7 and bob_pos.average_price == Decimal('90')
+        assert bob_pos.margin_blocked == Decimal('630')
+        assert db.SandboxTrades.query.filter_by(user_id='bob').count() == 1
+        assert db.SandboxTrades.query.filter_by(user_id='alice').count() == 2
+        sell = db.SandboxTrades.query.filter_by(orderid=closing_id).one()
+        assert sell.user_id == 'alice' and sell.action == 'SELL'
+        assert sell.price == Decimal(close_price) and sell.quantity == 3
+        close_order = db.SandboxOrders.query.filter_by(orderid=closing_id).one()
+        assert close_order.order_status == 'complete' and close_order.pending_quantity == 0
+    verify_close()
+    # Replay the close: realized P&L and released cash must not be credited twice.
+    engine._process_order(db.SandboxOrders.query.filter_by(orderid=closing_id).one(),
+                          {'ltp': close_price, 'low': 60, 'high': 120})
+    db.db_session.remove()
+    verify_close()
+    assert [owner for kind, owner in events if kind == 'fill'] == ['alice', 'bob', 'alice']
 db.db_session.remove()
 db.engine.dispose()
 print('PASS: real placement, fixed-price fills and duplicate replay stay account-owned')
 '''
     env = os.environ.copy()
     env.update(SANDBOX_DATABASE_URL='sqlite:///' + str(tmp_path / 'fills.db'),
-               DOMAINXPERT_PER_USER_GROWW='true', PYTHONPATH=str(ROOT))
+               DOMAINXPERT_PER_USER_GROWW='true', PYTHONPATH=str(ROOT),
+               PAPER_CLOSE_PRICE='' if close_price is None else str(close_price))
     result = subprocess.run([sys.executable, '-c', code], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr

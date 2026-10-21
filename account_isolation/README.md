@@ -952,3 +952,13 @@ synthetic fixture. Events are captured rather than delivered; websocket engine
 lookups return stopped. This is not live trading, concurrent fill validation,
 sell/close/settlement verification, HTTP authorization or a public rollout gate.
 It changes tests/docs only; no flags, frontend build or restart are needed.
+
+### Offline SELL/close and realized P&L
+The placement/fill integration now also covers Alice closing her three CNC
+shares at a fixed profit price (110 versus entry 90) and loss price (70).
+It checks zero remaining quantity/margin, released cash and realized P&L (+60 or
+-60), while Bob's same-symbol seven-share position, margin and funds remain
+unchanged. Replaying Alice's closing fill must not credit cash or P&L twice.
+These are sequential full-close scenarios with synthetic symbol metadata and
+prices. Partial closes, reversals, fees, concurrent fills and T+1 settlement
+remain outside this test; runtime behavior and deployment flags are unchanged.
