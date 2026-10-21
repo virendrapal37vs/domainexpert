@@ -915,3 +915,14 @@ isolation and normal-layout fallback. TypeScript checks the changed UI. These
 are component/request tests; real browser staging smoke verification remains the
 next step after installing, rebuilding and explicitly enabling the preview flag.
 Keep DOMAINXPERT_STAGING_SAFE=true; leave account execution/mode flags off.
+
+### Static draft inspection in editing preview
+Validate / Dry-run preview inspects the current unsaved graph through a
+staging-only, CSRF-protected endpoint. Ownership is checked before inspection.
+The existing strict validator reports graph and field problems. Valid graphs
+list node IDs/types in dependency order; conditional paths are possibilities,
+not predicted results. Nothing is saved, executed, scheduled or sent to a broker.
+No executor or credential reader is imported by the inspection service.
+Reports are marked stale after draft changes. Limit: 500 nodes and 2000 edges.
+Node configuration and validator received values are omitted from reports.
+This does not verify broker acceptance, fills, account funds or runtime behavior.

@@ -5,7 +5,7 @@ from flask import jsonify, request
 
 EDITING_ENDPOINTS = frozenset({
     'react.react_flow_index','react.react_flow_editor','react.react_flow_shortcuts',
-    'flow.list_workflows','flow.create_workflow','flow.get_workflow','flow.update_workflow',
+    'flow.preview_workflow_draft','flow.list_workflows','flow.create_workflow','flow.get_workflow','flow.update_workflow',
     'flow.export_workflow','flow.import_workflow','flow.replace_workflow',
     'flow.get_workflow_executions','flow.record_trigger_review',
 })

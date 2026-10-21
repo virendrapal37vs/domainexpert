@@ -1,3 +1,4 @@
+import { DraftPreview } from '@/components/flow/DraftPreview'
 import { useFlowEditingPreview } from '@/components/layout/FlowLayout'
 import { OneShotReview } from '@/components/flow/OneShotReview'
 // pages/flow/FlowEditor.tsx
@@ -814,6 +815,7 @@ function FlowEditorContent() {
         onConfirm={handleLogout}
       />
 
+      {editingPreview && <DraftPreview workflowId={Number(id)} />}
       {/* Workflow Toolbar */}
       <div className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
         <div className="flex items-center gap-3">

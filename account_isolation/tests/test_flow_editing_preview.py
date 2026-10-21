@@ -86,3 +86,48 @@ def test_preview_needs_all_three_flags(preview,monkeypatch,flag):
     assert not editing_preview_enabled()
     # Staging off still leaves the general per-account Flow guard blocking APIs.
     assert preview.client.get('/flows').status_code in (403,503)
+
+
+def test_draft_preview_owned_csrf_and_read_only(preview):
+    s = preview
+    # Attach the real route body through the same gates and decorator.
+    app = s.client.application
+    env = {'jsonify': jsonify, 'request': request,
+           '_flow_account_owner': function('blueprints/flow.py', '_flow_account_owner', {})}
+    view = flow_session_required(function('blueprints/flow.py', 'preview_workflow_draft', env))
+    app._got_first_request = False
+    app.add_url_rule('/preview/<int:workflow_id>', endpoint='flow.preview_workflow_draft', view_func=view, methods=['POST'])
+    own = s.db.create_workflow('Own', owner_username='alice')
+    other = s.db.create_workflow('Other', owner_username='bob')
+    payload = {'name': 'Draft', 'nodes': [], 'edges': []}
+    assert s.client.post(f'/preview/{other.id}', json=payload, headers=s.headers).status_code == 404
+    assert s.client.post(f'/preview/{own.id}', json=payload).status_code == 400
+    response = s.client.post(f'/preview/{own.id}', json=payload, headers=s.headers)
+    assert response.status_code == 200
+    assert response.json['executed'] is False
+    assert response.json['valid'] is False
+    assert response.json['issues']
+    assert s.db.get_workflow(own.id).name == 'Own'
+
+
+def test_static_preview_never_echoes_node_configuration():
+    from services.flow_draft_preview import inspect_draft
+    result = inspect_draft({'name': 'Draft', 'nodes': [{'id': 's', 'type': 'start', 'data': {'secret': 'SYNTHETIC_SECRET'}}], 'edges': []})
+    assert 'SYNTHETIC_SECRET' not in str(result)
+    assert result['executed'] is False
+    assert all(set(step) == {'node_id', 'type'} for step in result['steps'])
+
+
+def test_static_preview_orders_dependencies_and_rejects_disconnected_graph():
+    from services.flow_draft_preview import inspect_draft
+    payload = {'name': 'Draft', 'nodes': [
+        {'id': 's', 'type': 'webhookTrigger', 'position': {'x': 0, 'y': 0}, 'data': {}},
+        {'id': 'l', 'type': 'log', 'position': {'x': 0, 'y': 100}, 'data': {'message': 'hello'}}],
+        'edges': [{'id': 'e', 'source': 's', 'target': 'l'}]}
+    report = inspect_draft(payload)
+    assert report['valid'], report['issues']
+    assert [step['node_id'] for step in report['steps']] == ['s', 'l']
+    payload['edges'] = []
+    report = inspect_draft(payload)
+    assert not report['valid']
+    assert report['steps'] == []

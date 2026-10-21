@@ -1963,3 +1963,25 @@ def get_option_strikes():
     except Exception as e:
         logger.exception(f"Error fetching option strikes for {underlying}: {e}")
         return jsonify({"status": "error", "message": "Failed to fetch option strikes"}), 500
+
+
+@flow_bp.route("/api/workflows/<int:workflow_id>/draft-preview", methods=["POST"])
+@flow_session_required
+def preview_workflow_draft(workflow_id):
+    """Inspect an unsaved graph without persisting or executing it."""
+    from utils.flow_editing_preview import editing_preview_enabled
+    if not editing_preview_enabled():
+        return jsonify(error="Editing preview required"), 403
+    from database.flow_db import get_account_workflow
+    owner = _flow_account_owner()
+    if owner is None or not get_account_workflow(workflow_id, owner):
+        return jsonify(error="Workflow not found"), 404
+    from services.flow_draft_preview import inspect_draft
+    payload = request.get_json(silent=True)
+    # Bound inspection work independently of the executor.
+    if (not isinstance(payload, dict) or not isinstance(payload.get("nodes"), list)
+            or not isinstance(payload.get("edges"), list)):
+        return jsonify(error="Expected a workflow object with nodes and edges"), 400
+    if len(payload["nodes"]) > 500 or len(payload["edges"]) > 2000:
+        return jsonify(error="Preview supports up to 500 nodes and 2000 edges"), 400
+    return jsonify(inspect_draft(payload))
