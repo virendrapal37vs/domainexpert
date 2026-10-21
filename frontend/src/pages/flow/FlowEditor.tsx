@@ -569,8 +569,8 @@ function FlowEditorContent() {
       <div className="flex h-screen flex-col bg-background text-foreground">
         <div className="h-12 border-b border-border flex items-center px-2 bg-card/50">
           <div className="flex items-center gap-2 px-2">
-            <img src="/images/android-chrome-192x192.png" alt="OpenAlgo" className="w-6 h-6" />
-            <span className="font-semibold text-sm">openalgo</span>
+            <img src="/images/domainxpert-icon.svg" alt="" className="w-6 h-6" />
+            <span className="font-semibold text-sm">DomainXpert Trade</span>
           </div>
           <div className="flex-1" />
         </div>
@@ -594,8 +594,8 @@ function FlowEditorContent() {
       <div className="flex h-screen flex-col bg-background text-foreground">
         <div className="h-12 border-b border-border flex items-center px-2 bg-card/50">
           <div className="flex items-center gap-2 px-2">
-            <img src="/images/android-chrome-192x192.png" alt="OpenAlgo" className="w-6 h-6" />
-            <span className="font-semibold text-sm">openalgo</span>
+            <img src="/images/domainxpert-icon.svg" alt="" className="w-6 h-6" />
+            <span className="font-semibold text-sm">DomainXpert Trade</span>
           </div>
           <div className="flex-1" />
         </div>
@@ -628,8 +628,8 @@ function FlowEditorContent() {
         {/* Top Header Bar */}
         <div className="h-12 border-b border-border flex items-center px-2 bg-card/50">
           <div className="flex items-center gap-2 px-2">
-            <img src="/images/android-chrome-192x192.png" alt="OpenAlgo" className="w-6 h-6" />
-            <span className="font-semibold text-sm">openalgo</span>
+            <img src="/images/domainxpert-icon.svg" alt="" className="w-6 h-6" />
+            <span className="font-semibold text-sm">DomainXpert Trade</span>
           </div>
           <div className="flex-1" />
         </div>
@@ -646,8 +646,8 @@ function FlowEditorContent() {
       <div className="h-12 border-b border-border flex items-center px-2 bg-card/50">
         {/* Left: Logo */}
         <div className="flex items-center gap-2 px-2">
-          <img src="/images/android-chrome-192x192.png" alt="OpenAlgo" className="w-6 h-6" />
-          <span className="font-semibold text-sm">openalgo</span>
+          <img src="/images/domainxpert-icon.svg" alt="" className="w-6 h-6" />
+          <span className="font-semibold text-sm">DomainXpert Trade</span>
         </div>
 
         {/* Center: Workflow Name */}
@@ -659,20 +659,21 @@ function FlowEditorContent() {
         <div className="flex items-center gap-2 px-2">
           {/* Mode Badge */}
           <Badge
-            variant={appMode === 'live' ? 'default' : 'secondary'}
+            variant={editingPreview ? 'secondary' : appMode === 'live' ? 'default' : 'secondary'}
             className={cn(
               'text-xs',
-              appMode === 'analyzer' && 'bg-purple-500 hover:bg-purple-600 text-white'
+              !editingPreview && appMode === 'analyzer' && 'bg-purple-500 hover:bg-purple-600 text-white'
             )}
           >
             <span className="hidden sm:inline">
-              {appMode === 'live' ? 'Live Mode' : 'Analyze Mode'}
+              {editingPreview ? 'Editing Preview' : appMode === 'live' ? 'Live Mode' : 'Analyze Mode'}
             </span>
-            <span className="sm:hidden">{appMode === 'live' ? 'Live' : 'Analyze'}</span>
+            <span className="sm:hidden">{editingPreview ? 'Preview' : appMode === 'live' ? 'Live' : 'Analyze'}</span>
           </Badge>
 
-          {/* Mode Toggle */}
-          <Button
+          {/* Trading mode switching is unavailable in editing preview. */}
+          {!editingPreview && (
+            <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8"
@@ -689,6 +690,7 @@ function FlowEditorContent() {
               <BarChart3 className="h-4 w-4" />
             )}
           </Button>
+          )}
 
           {/* Theme Toggle */}
           <Button
@@ -696,7 +698,7 @@ function FlowEditorContent() {
             size="icon"
             className="h-8 w-8"
             onClick={toggleMode}
-            disabled={appMode !== 'live'}
+            disabled={!editingPreview && appMode !== 'live'}
             title={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
             aria-label={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
           >
