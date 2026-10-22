@@ -962,3 +962,18 @@ unchanged. Replaying Alice's closing fill must not credit cash or P&L twice.
 These are sequential full-close scenarios with synthetic symbol metadata and
 prices. Partial closes, reversals, fees, concurrent fills and T+1 settlement
 remain outside this test; runtime behavior and deployment flags are unchanged.
+
+### HTTP API-key-to-sandbox integration
+`test_http_sandbox_placement.py` registers the actual placeorder REST resource
+and schema in a small Flask app, calling the actual placement service, account
+mode resolver, sandbox service and OrderManager against temporary SQLite.
+Synthetic API-key/user/mode lookups replace credential storage; fixed quotes
+assert the requested quote key belongs to a known fixture account. A conflicting
+browser session cannot override the supplied API key. Invalid/missing keys and
+forged owner fields create no rows. Cash/margin and durable orders stay separate.
+Live broker imports and socket connections raise; event delivery, Action Center
+queuing, rate limiting and unrelated REST namespace startup are stubbed.
+This is not the full deployed Flask app, password login/API-key hashing test,
+CSRF check or live trading verification. REST uses API-key authentication; it
+is intentionally independent of a browser session. Server execution flags stay
+off. Install the added RESTX/Marshmallow test dependencies before running it.
