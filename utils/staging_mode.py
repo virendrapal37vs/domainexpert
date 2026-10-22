@@ -50,6 +50,7 @@ STAGING_ENDPOINTS = frozenset({
     "auth.login", "auth.login_totp", "auth.logout", "auth.get_csrf_token",
     "auth.check_setup_required", "auth.get_broker_config", "auth.get_session_status",
     "auth.get_app_info", "core_bp.setup", "account_broker.groww_credentials",
+    "account_broker.groww_connection_check",
 })
 
 

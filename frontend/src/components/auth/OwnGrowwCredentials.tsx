@@ -14,6 +14,25 @@ export function OwnGrowwCredentials({ configured, onSaved, connectionBlocked = f
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
+  async function checkConnection() {
+    setBusy(true)
+    setMessage('Checking saved credentials with Groww...')
+    try {
+      const csrf = await fetchCSRFToken()
+      const response = await fetch('/api/account/brokers/groww/check', {
+        method: 'POST', credentials: 'include',
+        headers: { 'X-CSRFToken': csrf, Accept: 'application/json' },
+      })
+      if (response.status === 429) throw new Error('Too many checks. Please wait before trying again.')
+      const result = await response.json()
+      setMessage(result.message || 'Could not complete the connection check.')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not complete the connection check.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function save(event: React.FormEvent) {
     event.preventDefault()
     setBusy(true)
@@ -31,7 +50,7 @@ export function OwnGrowwCredentials({ configured, onSaved, connectionBlocked = f
       }
       setKey('')
       setSecret('')
-      setMessage(connectionBlocked ? 'Your Groww credentials are saved. Connection is disabled in staging.' : 'Your Groww credentials are saved. You can connect below.')
+      setMessage(connectionBlocked ? 'Your Groww credentials are saved. You can run the read-only check below; trading remains disabled.' : 'Your Groww credentials are saved. You can connect below.')
       onSaved()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not save your credentials')
@@ -54,6 +73,15 @@ export function OwnGrowwCredentials({ configured, onSaved, connectionBlocked = f
       <Button type="submit" variant="outline" className="w-full" disabled={busy}>
         {busy ? 'Saving...' : 'Save my credentials'}
       </Button>
+      {connectionBlocked && configured && (
+        <>
+          <Button type="button" variant="outline" className="w-full" disabled={busy}
+            onClick={checkConnection}>
+            {busy ? 'Please wait...' : 'Check Groww (read-only)'}
+          </Button>
+          <p className="text-xs text-muted-foreground">Uses saved credentials for authentication and one BHEL quote. Does not save a broker session or enable trading.</p>
+        </>
+      )}
       <p role="status" aria-live="polite" className="text-sm">{message}</p>
     </form>
   )

@@ -5,8 +5,29 @@ from database.account_broker_db import (
     has_groww_credentials, per_user_groww_enabled, save_groww_credentials,
 )
 from utils.account_access import require_account
+from pathlib import Path
 
 account_broker_bp = Blueprint("account_broker", __name__, url_prefix="/api/account/brokers")
+
+
+@account_broker_bp.post("/groww/check")
+@require_account
+@limiter.limit("3 per minute;10 per hour")
+def groww_connection_check():
+    """Transient authentication and one quote; never establish a trading session."""
+    from utils.staging_mode import staging_safe, validate_staging_config
+    if not staging_safe() or not per_user_groww_enabled():
+        return jsonify(status="error", message="Read-only check is available in restricted staging only."), 403
+    validate_staging_config(Path(__file__).resolve().parents[1])
+    from database.account_broker_db import get_groww_credentials
+    credentials = get_groww_credentials(session["user"])
+    if not credentials:
+        return jsonify(status="error", message="Save your own Groww credentials first."), 409
+    from tenant_preview.groww_probe import check_connection
+    result = check_connection(*credentials)
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @account_broker_bp.route("/groww", methods=["GET", "PUT"])

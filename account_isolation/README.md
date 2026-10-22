@@ -1004,3 +1004,16 @@ cross-owner body spoofing, overselling, context restoration/thread separation,
 profit close, account isolation, event suppression and default-off gates.
 The complete running-app signup/login-to-paper smoke check remains a deployment
 verification step after enabling this screen. No frontend rebuild is needed.
+
+### Groww read-only check in restricted staging
+
+The account credentials form offers a manual read-only check for saved credentials
+in restricted staging. POST `/api/account/brokers/groww/check` requires a known
+signed-in account and CSRF token, and is limited to 3/minute and 10/hour per IP.
+It uses only the session owner's encrypted credentials, obtains a transient token,
+and requests one fixed BHEL quote through the existing bounded Groww probe.
+It does not persist tokens, mark the account broker-connected, start feeds,
+place orders, or enable history/trading routes. Groww rejection is reported as
+a check result, not as a successful connection. No check runs automatically.
+Browser/account ownership and CSRF tests use a fake probe; actual Groww access
+must be checked manually using the signed-in account's approved key.
