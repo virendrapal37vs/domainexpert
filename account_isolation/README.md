@@ -1017,3 +1017,24 @@ place orders, or enable history/trading routes. Groww rejection is reported as
 a check result, not as a successful connection. No check runs automatically.
 Browser/account ownership and CSRF tests use a fake probe; actual Groww access
 must be checked manually using the signed-in account's approved key.
+
+### Account-owned historical candle preview
+
+Restricted staging's saved-credentials form includes a manual BHEL/NSE history
+preview. POST `/api/account/brokers/groww/history-preview` requires the signed-in
+account, CSRF, validated staging configuration and per-user Groww mode. Limits
+are 3/minute and 10/hour per IP. The payload cannot choose an owner, instrument,
+interval or date range: it always requests 5-minute BHEL candles for the previous
+weekday in IST (which may be a holiday). Uses a fresh transient token with the
+existing BrokerData master-contract lookup and history conversion. No token or
+history is persisted, and no broker session, feed or order is created. The staging
+master must already contain BHEL/NSE; this endpoint never downloads or modifies it.
+
+Responses allow only the fixed metadata and numeric OHLCV candles (maximum 300),
+with generic failures instead of raw broker errors or secrets. The UI displays
+count, date and first ten rows with explicit IST times, clears old results before
+loading or on failure, and does not poll or retry. Tests cover owner spoofing,
+CSRF, missing credentials, disabled staging, empty/malformed/oversized data and
+secret-bearing provider failures. UI tests cover manual request, IST rendering,
+clearing stale rows and throttling. Broker access is mocked in automated tests;
+manual validation with approved per-account Groww credentials remains necessary.

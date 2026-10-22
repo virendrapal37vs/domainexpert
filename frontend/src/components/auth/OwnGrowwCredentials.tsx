@@ -3,6 +3,7 @@ import { fetchCSRFToken } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { GrowwHistoryPreview } from './GrowwHistoryPreview'
 
 export function OwnGrowwCredentials({ configured, onSaved, connectionBlocked = false }: {
   configured: boolean
@@ -80,6 +81,7 @@ export function OwnGrowwCredentials({ configured, onSaved, connectionBlocked = f
             {busy ? 'Please wait...' : 'Check Groww (read-only)'}
           </Button>
           <p className="text-xs text-muted-foreground">Uses saved credentials for authentication and one BHEL quote. Does not save a broker session or enable trading.</p>
+          <GrowwHistoryPreview />
         </>
       )}
       <p role="status" aria-live="polite" className="text-sm">{message}</p>
