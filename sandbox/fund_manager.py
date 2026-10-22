@@ -37,7 +37,7 @@ from database.sandbox_db import (
     db_session,
     get_config,
 )
-from database.token_db import get_symbol_info
+from utils.paper_preview import get_symbol_info
 from utils.logging import get_logger
 from utils.symbol_utils import is_future, is_option
 

@@ -25,7 +25,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.sandbox_db import SandboxOrders, SandboxPositions, SandboxTrades, db_session
 from database.symbol import SymToken
-from database.token_db import get_symbol_info
+from utils.paper_preview import get_symbol_info
 from sandbox.fund_manager import FundManager
 from sandbox.position_locks import holds_position_lock
 from utils.constants import VALID_EXCHANGES
@@ -1201,6 +1201,9 @@ class OrderManager:
         picks it up. Error-isolated — never let event-bus failures break order
         placement/cancellation.
         """
+        from utils.paper_preview import synthetic_order
+        if synthetic_order(order.symbol):
+            return
         try:
             from events import OrderUpdateEvent
             from utils.event_bus import bus

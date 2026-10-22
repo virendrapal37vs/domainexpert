@@ -363,6 +363,8 @@ def create_app():
     app.register_blueprint(account_broker_bp)
     from blueprints.account_signup import signup_bp
     app.register_blueprint(signup_bp)
+    from blueprints.paper_preview import paper_preview_bp
+    app.register_blueprint(paper_preview_bp)
     from utils.account_socket import register_account_socket
     register_account_socket(socketio)
     app.register_blueprint(system_permissions_bp)  # Register System permissions blueprint

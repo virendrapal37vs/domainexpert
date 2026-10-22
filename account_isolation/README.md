@@ -977,3 +977,30 @@ This is not the full deployed Flask app, password login/API-key hashing test,
 CSRF check or live trading verification. REST uses API-key authentication; it
 is intentionally independent of a browser session. Server execution flags stay
 off. Install the added RESTX/Marshmallow test dependencies before running it.
+
+### Running staging paper preview (default off)
+Set `DOMAINXPERT_PAPER_PREVIEW=true` only in the validated restricted staging
+checkout to expose `/paper-preview`. Existing password signup/login sessions own
+this screen. POSTs require normal Flask CSRF protection. It uses the actual
+sandbox OrderManager/ExecutionEngine and staging sandbox database, fixing symbol
+DXPAPER/NSE/CNC, BUY price 100 and SELL price 110; quantity is 1–100 whole shares.
+Identity, price and symbol in submitted bodies cannot select another account or
+instrument. Synthetic metadata exists only in a ContextVar scope around that
+request, restores on exceptions, and does not flow into another worker thread.
+Normal sandbox calls still delegate to the original symbol provider. Quote data
+is supplied locally; no broker credential lookup is needed. Synthetic preview
+order/fill events are not sent onto the subscriber bus. All ordinary trading,
+broker connection, WebSocket and automation routes remain under the staging gate.
+The page reads only that session owner's DXPAPER position/orders; displayed cash
+and margin are that owner's staging sandbox balances. It is a demo with fixed
+prices, not live data or a broker entitlement check. Repeated BUY submissions are
+separate paper orders. Rejections may be retained in the sandbox order history.
+No reset/delete or live execution action is exposed. Initialize sandbox tables
+through normal staging startup. Disable the flag and restart to close the screen.
+
+Tests exercise real preview routes + session/CSRF gates, actual OMS/engine and
+SQLite with fake user lookup, forbid quote/auth/network providers, and verify
+cross-owner body spoofing, overselling, context restoration/thread separation,
+profit close, account isolation, event suppression and default-off gates.
+The complete running-app signup/login-to-paper smoke check remains a deployment
+verification step after enabling this screen. No frontend rebuild is needed.

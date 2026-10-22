@@ -57,7 +57,8 @@ def install_staging_gate(app):
     @app.before_request
     def restricted_staging_routes():
         from utils.flow_editing_preview import editing_request_allowed
-        if editing_request_allowed():
+        from utils.paper_preview import request_allowed as paper_request_allowed
+        if editing_request_allowed() or paper_request_allowed():
             from utils.account_access import current_account
             if current_account() is None:
                 return jsonify(error="Sign in first"),401

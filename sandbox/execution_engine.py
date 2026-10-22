@@ -33,7 +33,7 @@ from database.sandbox_db import (
     SandboxTrades,
     db_session,
 )
-from database.token_db import get_symbol_info
+from utils.paper_preview import get_symbol_info
 from sandbox.fund_manager import FundManager, reconcile_margin, validate_margin_consistency
 from services.quotes_service import get_multiquotes, get_quotes
 from utils.sandbox_quote_owner import fetch_record_quotes, quote_api_key
@@ -342,6 +342,9 @@ class ExecutionEngine:
         event-bus path was reached (any breakage in registration or imports
         would suppress the log too).
         """
+        from utils.paper_preview import synthetic_order
+        if synthetic_order(symbol):
+            return
         try:
             from events import OrderUpdateEvent, SandboxOrderFilledEvent
             from utils.event_bus import bus
@@ -743,6 +746,9 @@ class ExecutionEngine:
         a fill (rejection, cancellation) — mirrors _publish_fill_event's
         never-break-the-caller error isolation.
         """
+        from utils.paper_preview import synthetic_order
+        if synthetic_order(order.symbol):
+            return
         try:
             from events import OrderUpdateEvent
             from utils.event_bus import bus
