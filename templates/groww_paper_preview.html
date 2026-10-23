@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Groww Quote Paper Simulation · DomainXpert Trade</title>
+<style>body{font:16px system-ui;background:#f5f6fa;color:#17132f;margin:0}main{max-width:960px;margin:32px auto;padding:24px;background:white;border-radius:16px}h1{font-size:24px}.notice{background:#edf7f5;padding:16px;border-radius:8px}.error{color:#a01818}form{display:flex;gap:12px;align-items:end;margin:24px 0;flex-wrap:wrap}input,button{font:inherit;padding:10px;border:1px solid #ccc;border-radius:6px}button{cursor:pointer}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px;border-bottom:1px solid #ddd}.scroll{overflow:auto}dt{font-weight:600}dd{margin:4px 0 16px}</style></head>
+<body><main><a href="/broker">Back to account</a> · <a href="/paper-preview">Fixed-price demo</a>
+<h1>DomainXpert Trade · Groww Quote Paper Simulation</h1>
+<p class="notice">Simulated orders only. Your Groww credentials read BHEL/NSE quotes. DXBHEL is a separate paper instrument, not real BHEL shares. Each BUY/SELL fetches a new quote and simulates a fill at its last price. No broker order is sent. Actual execution, spread, fees and slippage may differ.</p>
+<p>Signed in as <strong>{{ username }}</strong></p>
+{% if error %}<p role="alert" class="error">{{ error }}</p>{% endif %}
+{% if quote %}<p role="status">Groww BHEL/NSE last price: <strong>₹{{ quote.ltp }}</strong> · Last trade: {{ quote.traded_at_ist }} · Age when fetched: {{ quote.age_seconds }}s. This quote is informational; BUY/SELL fetches again.</p>{% endif %}
+<form method="post" action="{{ url_for('paper_preview.groww_quote') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Fetch BHEL quote (read-only)</button></form>
+<p>Orders require a last-trade timestamp no older than 2 minutes. Closed-market or stale quotes are rejected.</p>
+<dl><dt>DXBHEL paper position</dt><dd>{{ quantity }} shares</dd><dt>DXBHEL realized P&amp;L</dt><dd>₹{{ realized_pnl }}</dd><dt>Sandbox available cash</dt><dd>{{ available_cash if available_cash is not none else 'Created on first paper order' }}</dd><dt>Sandbox used margin</dt><dd>{{ used_margin if used_margin is not none else '—' }}</dd></dl>
+<form method="post" action="{{ url_for('paper_preview.groww_order') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Quantity<br><input name="quantity" type="number" min="1" max="100" value="1" required></label><button name="action" value="BUY">Simulate BUY at new quote</button><button name="action" value="SELL">Simulate SELL at new quote</button></form>
+<p>SELL requires your own DXBHEL paper shares. Cash and margin are shared with your other staging sandbox simulations. Refreshing this page does not place an order. Each button submission is a new simulated order.</p>
+<div class="scroll"><table><thead><tr><th>Order</th><th>Action</th><th>Quantity</th><th>Status</th><th>Simulated fill price</th></tr></thead><tbody>{% for order in orders %}<tr><td>{{ order.orderid }}</td><td>{{ order.action }}</td><td>{{ order.quantity }}</td><td>{{ order.status }}</td><td>₹{{ order.price }}</td></tr>{% else %}<tr><td colspan="5">No DXBHEL paper orders yet.</td></tr>{% endfor %}</tbody></table></div>
+</main></body></html>

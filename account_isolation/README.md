@@ -1038,3 +1038,36 @@ CSRF, missing credentials, disabled staging, empty/malformed/oversized data and
 secret-bearing provider failures. UI tests cover manual request, IST rendering,
 clearing stale rows and throttling. Broker access is mocked in automated tests;
 manual validation with approved per-account Groww credentials remains necessary.
+
+### Groww-quote paper simulation (default off)
+
+`DOMAINXPERT_GROWW_PAPER_PREVIEW=true` adds `/paper-preview/groww` only when
+restricted staging, per-user Groww and the original paper-preview flag are all
+on. The existing fixed-price DXPAPER demonstration is unchanged. This screen
+simulates a separate DXBHEL paper instrument using BHEL/NSE quotes; it does not
+hold or trade real BHEL shares. It shares only the owner's staging sandbox funds.
+
+POST `/paper-preview/groww/quote` reads one account-owned quote. POST
+`/paper-preview/groww/order` validates BUY/SELL and integer quantity 1–100, then
+gets a new transient token and quote from the logged-in account's saved keys.
+Client-supplied owner, instrument, price and timestamps have no authority. Only a
+positive finite LTP within the quoted day range and last-trade age <=120 seconds
+(up to 5 seconds future clock tolerance) is accepted. Stale/closed-market quotes,
+missing keys and provider failures stop before sandbox funds/orders are written.
+Each POST route is limited to 3/minute and 10/hour per IP and requires CSRF.
+
+Accepted orders use the real sandbox OMS, with a marketable LIMIT at that quote's
+LTP and the same prefetched quote for simulated execution. Actual durable status,
+fill, account position and P&L are displayed; placement is not proof of a fill.
+No broker order module is called, no token persists, no background engine starts,
+and paper order/fill events are suppressed within the existing request-local
+paper context. DXBHEL uses explicit synthetic equity metadata only in this
+context; real symbol lookup remains unchanged outside it. Orders are separate
+submissions, not an idempotent broker workflow. Fees/spread/slippage are not
+modeled here. No automatic polling or mark-to-market is added.
+
+Automated tests use fake owner quotes and real SQLite/OMS for two-account fills,
+close/P&L, cross-account spoofing, oversells, invalid inputs, CSRF, disabled flags,
+quote failures without order mutation, and no events/network. Provider tests
+cover timestamps, invalid numeric data, range checks, fixed endpoint and missing
+auth. Actual Groww/manual browser fills must be checked during market hours.
