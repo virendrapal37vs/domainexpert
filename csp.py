@@ -3,7 +3,7 @@
 import os
 from functools import wraps
 
-from flask import current_app, request
+from flask import current_app, request, has_request_context
 
 
 def get_csp_config():
@@ -122,6 +122,17 @@ def get_csp_config():
     report_to = os.getenv("CSP_REPORT_TO")
     if report_to:
         csp_config["report-to"] = report_to
+
+    # Scope Checkout permissions to the subscription document, never the entire app.
+    if has_request_context() and request.endpoint == 'account_subscription.page':
+        from services import razorpay_subscription
+        if razorpay_subscription.enabled():
+            for directive, sources in {
+                'script-src': 'https://checkout.razorpay.com',
+                'frame-src': 'https://api.razorpay.com https://checkout.razorpay.com',
+                'connect-src': 'https://api.razorpay.com https://checkout.razorpay.com',
+            }.items():
+                csp_config[directive] = csp_config.get(directive, "'self'") + ' ' + sources
 
     return csp_config
 

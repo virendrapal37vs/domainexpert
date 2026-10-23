@@ -1138,3 +1138,93 @@ Orders CSV exports the current page, with `paper-orders-page-N.csv` filename; it
 The dashboard links to `/paper-preview/daily-pnl` (GET, optional `start`/`end`, `format=json` or `format=csv`). Defaults to the last 30 IST calendar days, including today; the inclusive range is limited to 366 days. Only the authenticated account's DXPAPER/DXBHEL NSE/CNC saved fills participate. Earlier retained fills carry average cost into the selected period. Gross realized P&L is assigned to the closing SELL fill's IST date; days with BUY fills only show zero realized P&L, and days with no fills are omitted. This preview supports long positions, not short selling.
 
 The read-only reconstruction processes at most 10,000 fills in saved execution ID order, with average cost rounded to stored price precision, and reconciles each instrument's final quantity, open average and cumulative realized P&L to saved positions. Missing/inconsistent history, unsupported fills or a limit breach return 409 with no totals or downloadable partial report. Rounding or concurrent orders can also cause reconciliation failure. Reconciliation alone cannot prove deleted historical records never existed; retained history is required. No current unrealized valuations, broker calls, cash mutations or database migrations occur. The CSV exports all returned daily rows, not the paginated orders. This is a reconstructed gross simulation report, excluding fees/spread/slippage, not a tax report or broker statement.
+
+
+### Manual subscription staging preview
+
+`DOMAINXPERT_MANUAL_SUBSCRIPTIONS=true` is an opt-in restricted-staging-only
+payment preview. Back up `DATABASE_URL` before enabling: a new
+`account_manual_payments` table stores globally unique 12-digit UPI references,
+fixed 236000-paise requests, approval/rejection, reviewer, and UTC expiry.
+No GST is separately charged. The supplied QR is served at `/subscription/qr`
+to signed-in users. Verify the receiving account name independently before launch.
+
+`/subscription` shows the current account's payment history; `/subscription/admin`
+requires a freshly loaded database administrator. Approval requires checking the
+actual receiving bank account; a user-submitted UTR is not payment verification.
+Approval grants one calendar month from the later of approval/current expiry.
+SQLite BEGIN IMMEDIATE serializes approvals and submissions; double approval and
+UTR reuse are rejected. No refunds, auto-renewals, gateway integration or bank
+verification automation are implemented. Latest 100 requests are shown.
+
+Only the persisted administrator with BOTH username and email exactly
+`virendrapal37@gmail.com` has owner exemption. Email strings supplied by clients,
+roles in cookies and other administrator accounts do not confer free access.
+
+The gate blocks account broker endpoints, broker configuration/callback and paper
+POST operations without active access. Saved paper reports remain readable after
+expiry. Existing staging broker/worker restrictions remain in place. This is NOT
+a production trading subscription enforcement layer: API-key endpoints, sockets,
+background execution, expiry position management and other services need a full
+production audit before public paid launch. Startup refuses this flag outside
+restricted staging. Keep account modes and account Flow execution disabled.
+
+Rebranding does not remove the upstream AGPL obligations. Keep the license and
+copyright notices, mark changes and offer complete corresponding deployed source
+(including required build scripts) to network users without additional source fees.
+Never include .env, broker credentials, database contents or payment records in
+source archives. A private repository alone is not a source offer.
+
+### Razorpay TEST checkout (not a live payment rollout)
+
+Apply this increment after the AI homepage/manual subscription patches. Existing
+manual history and owner exemption remain. `DOMAINXPERT_RAZORPAY_TEST=true`
+requires the manual subscription flag, restricted staging, a `rzp_test_` key,
+`RAZORPAY_KEY_SECRET`, and a distinct `RAZORPAY_WEBHOOK_SECRET` of >=32 characters.
+Startup refuses live keys. Never commit `.env` or paste secrets into chat.
+
+Run `~/domainxpert-staging-venv/bin/python account_isolation/configure_razorpay_test.py`
+as a file in the staging checkout. It prompts for keys without putting secrets
+in shell history, validates TEST authentication with a read-only API request,
+backs up the main staging SQLite DB and .env, then writes the opt-in settings.
+Restart ONLY `domainxpert-staging.service`. No additional pip dependencies.
+
+Standard Checkout creates a fixed INR 236000-paise server-side order bound to the
+current account and merchant test key. The browser's claimed amount/owner are
+ignored. Callback HMAC uses the stored order ID. Server fetches payment and order
+using merchant credentials and requires full captured/paid INR payment, exact
+amount, no refund and matching order ID before extending access. SQLite's write
+transaction records capture and one calendar month atomically; repeated callbacks,
+status checks and webhooks do not extend again. Manual approvals and test captures
+share expiry stacking, but test orders have a separate test-only ledger.
+
+Checkout assets are allowed by CSP only on the subscription page. The page labels
+TEST mode and no real money, and hides new manual UTR submission while enabled.
+Owner exemption requires both exact persisted identity fields and admin status.
+Last 20 online orders are shown; use each order's Check payment button after a
+browser callback drop-off. No recurring mandate or automatic debit is created.
+
+Webhook endpoint: `/subscription/razorpay/webhook`, POST, ONLY this view is exempt
+from CSRF. It verifies HMAC-SHA256 of the raw request body with the webhook secret,
+then refetches payment/order through the merchant API. Other checkout POSTs still
+require account auth + CSRF. Subscribe to `payment.captured` and `order.paid`.
+Duplicate delivery is handled by unique order/payment records and atomic grants.
+The localhost SSH tunnel is NOT reachable by Razorpay webhooks. Keep staging on
+loopback; use authenticated status reconciliation for localhost tests. Do not point
+webhooks at the existing production service or expose staging just for a webhook.
+A separately planned HTTPS staging deployment is needed to test real delivery.
+
+This gateway is test-only. Live merchant activation, merchant acceptance of the
+business, Terms/Privacy/Refund/Contact pages, full live payment/refund/dispute
+handling, source delivery, and production subscription enforcement across API
+keys, sockets/background workers are launch prerequisites. Test captures never
+justify migrating staging entitlements into production. No live keys supported.
+AI and live trading remain disabled. To fall back to manual payment UI, set only
+`DOMAINXPERT_RAZORPAY_TEST=false` and restart; test grants are then excluded from
+access calculations. Keep test records for audit instead of deleting them.
+
+Checkout client regression check: `node account_isolation/tests/js/test_razorpay_client.cjs`.
+The script waits for DOMContentLoaded because the order table follows the script.
+Check payment displays progress and an explicit verified/unchanged-expiry result,
+without silently reloading the page. Repeated clicks during a status request are
+ignored; an error restores the button so checking can be retried.

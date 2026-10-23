@@ -44,6 +44,10 @@ def validate_staging_config(root):
 
 
 STAGING_ENDPOINTS = frozenset({
+    "account_subscription.razorpay_client", "account_subscription.razorpay_order", "account_subscription.razorpay_verify",
+    "account_subscription.razorpay_status", "account_subscription.razorpay_webhook",
+    "account_subscription.page", "account_subscription.qr", "account_subscription.payment",
+    "account_subscription.admin", "account_subscription.review",
     "account_signup.signup", "react.react_signup", "react.react_index", "react.react_login", "react.react_setup", "react.react_broker",
     "react.serve_assets", "react.serve_favicon", "react.serve_logo",
     "react.serve_apple_touch_icon", "react.serve_images",

@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Subscription | DomainXpert Trade</title><style>body{font:16px system-ui;background:#f4f7fb;color:#16243b;margin:0;padding:24px}main{max-width:720px;margin:30px auto;background:white;border:1px solid #dde3ec;border-radius:20px;padding:28px}img{width:240px;max-width:100%}input,button{font:inherit;padding:12px;border-radius:8px;border:1px solid #bcc8d8}button{background:#087e68;color:white;cursor:pointer}table{width:100%;text-align:left;font-size:14px}td,th{padding:10px;border-bottom:1px solid #eee}a{color:#087e68}.scroll{overflow:auto}</style></head><body><main>
+<a href="/">DomainXpert Trade</a><h1>Your subscription</h1><p>Signed in as {{ user.username }}</p>
+{% if subscription.exempt %}<h2>Owner access</h2><p>This account does not require payment.</p>{% else %}
+<h2>₹2,360 / month</h2><p>Subscription fee. No GST is charged separately.</p>
+<p>Status: <strong>{{ 'Active' if subscription.active else 'Payment required' }}</strong>{% if subscription.access_until %} · Access until {{ subscription.access_until }} (UTC){% endif %}</p>
+{% if razorpay_test %}
+<p><strong>Razorpay Test Mode — no real payment. This grants staging access only.</strong></p>
+<p>Each verified test payment adds one calendar month. This is a one-time checkout; no automatic monthly debit.</p>
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button id="razorpay-pay" type="button">Pay ₹2,360 · Test checkout</button>
+<p id="razorpay-message" role="status" aria-live="polite"></p>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="{{ url_for('account_subscription.razorpay_client') }}"></script>
+<h2>Razorpay test orders</h2><div class="scroll"><table><thead><tr><th>Order</th><th>Status</th><th>Check</th></tr></thead><tbody>{% for payment in online_payments %}<tr><td>{{ payment.order_id }}</td><td>{{ payment.status }}</td><td><button type="button" data-check-order="{{ payment.order_id }}">Check payment</button></td></tr>{% else %}<tr><td colspan="3">No test orders yet.</td></tr>{% endfor %}</tbody></table></div>
+{% else %}
+<p>Pay the exact amount using this UPI QR. Check the receiver name in your payment app before paying. Each verified payment adds one calendar month from approval or your current expiry, whichever is later.</p>
+<img src="{{ url_for('account_subscription.qr') }}" alt="UPI payment QR for subscription">
+<form method="post" action="{{ url_for('account_subscription.payment') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><p><label for="utr">UPI reference / UTR (12 digits)</label></p><input id="utr" name="utr" required pattern="[0-9]{12}" maxlength="12" inputmode="numeric" autocomplete="off"><button type="submit">Submit for verification</button></form>
+<p>Submitting a reference does not activate access. The administrator must verify receipt in the bank account. Never share your UPI PIN or OTP.</p>
+{% endif %}
+{% endif %}
+{% if subscription.active %}<p><a href="/broker">Continue to broker setup →</a></p>{% endif %}
+{% if user.is_admin %}<p><a href="{{ url_for('account_subscription.admin') }}">Review payments</a></p>{% endif %}
+<h2>Payment history</h2><div class="scroll"><table><thead><tr><th>Reference</th><th>Amount</th><th>Status</th></tr></thead><tbody>{% for payment in payments %}<tr><td>{{ payment.utr }}</td><td>₹{{ '%.2f'|format(payment.amount_paise / 100) }}</td><td>{{ payment.status }}</td></tr>{% else %}<tr><td colspan="3">No payments submitted.</td></tr>{% endfor %}</tbody></table></div><p>Live trading remains disabled in restricted staging.</p></main></body></html>

@@ -1,450 +1,379 @@
 import {
   ArrowRight,
+  BarChart3,
   Blocks,
-  BookOpen,
-  Bot,
-  CandlestickChart,
-  ClipboardList,
   Download,
-  GraduationCap,
-  HelpCircle,
-  LogIn,
-  Menu,
-  MessageCircle,
+  LockKeyhole,
   Moon,
-  Server,
-  ShieldCheck,
-  Sigma,
   Sparkles,
   Sun,
-  Wand2,
-  Zap,
 } from 'lucide-react'
-import { useState } from 'react'
 import { Link } from 'react-router'
 import { Footer } from '@/components/layout/Footer'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
-import { tools } from '@/lib/tools'
 import { useThemeStore } from '@/stores/themeStore'
 
-const integrations = [
-  'Amibroker',
-  'TradingView',
-  'GoCharting',
-  'Python',
-  'MetaTrader',
-  'N8N',
-  'Java',
-  'Go',
-  '.NET',
-  'Node.js',
-  'Rust',
-  'ChartInk',
-  'Excel',
-  'Google Sheets',
-  'OpenClaw',
-  'Telegram',
-]
-
-// Open Varsity (openalgo.in/learn) course count, shown in the hero pill.
-const VARSITY_COURSES = 13
-
-// The surfaces that share one broker session and feed inside a single
-// self-hosted instance. Counts come from the code: tools.length is the /tools
-// registry, nodeTypes in components/flow/nodes is the Flow palette, and the
-// indicator count is what openalgo-charts ships.
-const platformDesks = [
+const features = [
   {
-    icon: Server,
-    title: 'Self-hosted algo trading',
-    desc: 'A unified broker API and execution engine on your own server, driven from TradingView, Amibroker, ChartInk, Excel, Python or MCP.',
+    icon: LockKeyhole,
+    title: 'Your own broker credentials',
+    text: 'Keep your credentials, paper orders and reports together in your own account.',
   },
   {
-    icon: CandlestickChart,
-    title: 'Charting platform',
-    desc: 'Chart-based trading in the built-in terminal: fire and manage orders from the chart itself, with 102 indicators on real market data.',
+    icon: BarChart3,
+    title: 'Paper trading & positions',
+    text: 'Review simulated positions, realized P&L and manually refreshed quote snapshots.',
   },
   {
     icon: Blocks,
-    title: 'No-code strategy builder',
-    desc: 'Flow is a drag-and-drop canvas: wire 61 node types from triggers to indicators, conditions and orders, then activate it to run on its own.',
+    title: 'Visual strategy drafts',
+    text: 'Organize workflow drafts visually before moving toward execution.',
   },
   {
-    icon: Sigma,
-    title: 'Options trading platform',
-    desc: `${tools.length} built-in tools: option chain, Greeks, OI tracker, max pain, vol surface, GEX, IV smile, straddles and arbitrage, plus portfolio and SIP backtesters.`,
-  },
-  {
-    icon: Zap,
-    title: 'Scalping platform',
-    desc: 'A keyboard-driven scalping terminal: arrow keys fire CE and PE orders, F6 flattens every position and F7 cancels every pending order.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Sandbox testing',
-    desc: 'Analyzer mode runs any strategy against real market data with 1 crore of sandbox capital and exchange-aligned auto square-off.',
+    icon: Download,
+    title: 'Order history & P&L exports',
+    text: 'Filter paper order history by date and export orders, positions and daily P&L.',
   },
 ]
 
+// Decorative sample candles: not a market feed or historical price series.
+const candles = [
+  172, 164, 181, 151, 142, 157, 131, 118, 139, 122, 105, 114, 93, 109, 121, 99, 87, 104, 79, 65, 83,
+  72, 56, 75, 61, 43, 55, 69, 48, 38,
+]
+
+function TradingDeskPreview() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-700/80 bg-[#0d1625] shadow-2xl shadow-black/40">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4 text-sm">
+        <div className="flex items-center gap-3">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          <span className="font-semibold text-white">DOMAINXPERT / TERMINAL</span>
+        </div>
+        <span className="text-[10px] uppercase tracking-widest text-slate-400">
+          Illustrative preview
+        </span>
+      </div>
+      <div className="grid sm:grid-cols-[1fr_145px]">
+        <div className="min-w-0 border-slate-800 p-5 sm:border-r">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-white">
+                BHEL <span className="ml-2 text-xs font-normal text-slate-400">NSE</span>
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Sample candlestick chart</p>
+            </div>
+            <span className="rounded border border-slate-700 px-2 py-1 text-xs text-emerald-400">
+              5m
+            </span>
+          </div>
+          <svg
+            viewBox="0 0 390 255"
+            className="mt-6 w-full"
+            role="img"
+            aria-label="Illustrative candlestick chart with volume bars. Not live market data."
+          >
+            {[35, 80, 125, 170, 215].map((y) => (
+              <line key={y} x1="0" x2="390" y1={y} y2={y} stroke="#1e293b" strokeDasharray="3 5" />
+            ))}
+            {candles.map((y, i) => {
+              const up = i % 4 !== 2
+              const color = up ? '#34d399' : '#fb7185'
+              return (
+                <g key={i}>
+                  <line x1={8 + i * 13} x2={8 + i * 13} y1={y - 13} y2={y + 22} stroke={color} />
+                  <rect
+                    x={4 + i * 13}
+                    y={y}
+                    width="8"
+                    height={(i % 3) * 4 + 8}
+                    rx="1"
+                    fill={color}
+                  />
+                  <rect
+                    x={4 + i * 13}
+                    y={240 - (i % 5) * 4}
+                    width="8"
+                    height={12 + (i % 5) * 4}
+                    fill={color}
+                    opacity="0.3"
+                  />
+                </g>
+              )
+            })}
+            <text x="0" y="254" fill="#64748b" fontSize="8">
+              09:15
+            </text>
+            <text x="175" y="254" fill="#64748b" fontSize="8">
+              12:00
+            </text>
+            <text x="355" y="254" fill="#64748b" fontSize="8">
+              15:30
+            </text>
+          </svg>
+        </div>
+        <div className="hidden p-4 sm:block">
+          <p className="mb-5 text-[10px] uppercase tracking-widest text-slate-500">Market watch</p>
+          {['BHEL', 'RELIANCE', 'HDFCBANK', 'INFY', 'TCS'].map((name, i) => (
+            <div key={name} className="border-b border-slate-800 py-4">
+              <p className="text-xs font-medium text-slate-200">{name}</p>
+              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
+                <span>NSE · Equity</span>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 34 14"
+                  className={i % 2 ? 'h-3 w-8 text-rose-400' : 'h-3 w-8 text-emerald-400'}
+                >
+                  <path
+                    d={
+                      i % 2
+                        ? 'M0 3 L8 5 L14 2 L21 10 L28 8 L34 13'
+                        : 'M0 12 L8 9 L14 11 L21 4 L28 6 L34 1'
+                    }
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-3 border-t border-slate-800 text-center text-[10px] uppercase tracking-wider text-slate-400">
+        <span className="border-r border-slate-800 py-4">Paper positions</span>
+        <span className="border-r border-slate-800 py-4">Order history</span>
+        <span className="py-4">Daily P&amp;L</span>
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const { mode, toggleMode } = useThemeStore()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
-  const navLinks = [
-    { href: '/', label: 'Home', internal: true },
-    { href: '/faq', label: 'FAQ', internal: true },
-    { href: 'https://www.openalgo.in/learn', label: 'Varsity', internal: false },
-    { href: 'https://openalgo.in/discord', label: 'Community', internal: false },
-    { href: 'https://openalgo.in/roadmap', label: 'Roadmap', internal: false },
-    { href: 'https://docs.openalgo.in', label: 'Docs', internal: false },
-  ]
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Navbar */}
-      <header className="sticky top-0 z-30 h-16 w-full border-b bg-background/90 backdrop-blur">
-        <nav className="container mx-auto px-4 flex h-full items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            {/* Mobile menu button */}
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild className="lg:hidden">
-                <Button variant="ghost" size="icon" aria-label="Open menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-80">
-                <SheetHeader className="sr-only">
-                  <SheetTitle>Navigation Menu</SheetTitle>
-                  <SheetDescription>Main navigation and quick access links</SheetDescription>
-                </SheetHeader>
-                <div className="flex items-center gap-2 mb-8">
-                  <img src="/images/domainxpert-trade.png" alt="DomainXpert Trade" className="h-8 w-auto max-w-[180px] object-contain rounded bg-white px-1" />
-                  
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Link
-                    to="/"
-                    className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-accent"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                      />
-                    </svg>
-                    Home
-                  </Link>
-                  <Link
-                    to="/faq"
-                    className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-accent"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <HelpCircle className="h-5 w-5" />
-                    FAQ
-                  </Link>
-                  <Link
-                    to="/download"
-                    className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Download className="h-5 w-5" />
-                    Download
-                  </Link>
-                  <a
-                    href="https://www.openalgo.in/learn"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-accent"
-                  >
-                    <GraduationCap className="h-5 w-5" />
-                    Varsity
-                  </a>
-                  <a
-                    href="https://openalgo.in/discord"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-accent"
-                  >
-                    <MessageCircle className="h-5 w-5" />
-                    Community
-                  </a>
-                  <a
-                    href="https://openalgo.in/roadmap"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-accent"
-                  >
-                    <ClipboardList className="h-5 w-5" />
-                    Roadmap
-                  </a>
-                  <a
-                    href="https://docs.openalgo.in"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-accent"
-                  >
-                    <BookOpen className="h-5 w-5" />
-                    Docs
-                  </a>
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <Link to="/" className="flex items-center gap-2">
-              <img src="/images/domainxpert-trade.png" alt="DomainXpert Trade" className="h-8 w-auto max-w-[180px] object-contain rounded bg-white px-1" />
-              
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
-            {navLinks.map((link) =>
-              link.internal ? (
-                <Link key={link.href} to={link.href}>
-                  <Button variant="ghost" size="sm">
-                    {link.label}
-                  </Button>
-                </Link>
-              ) : (
-                <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" size="sm">
-                    {link.label}
-                  </Button>
-                </a>
-              )
-            )}
-          </div>
-
-          {/* Right side */}
-          <div className="flex items-center gap-2">
-            <Link to="/download">
-              <Button size="sm">Download</Button>
-            </Link>
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
+        <nav
+          aria-label="Main navigation"
+          className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 sm:px-8"
+        >
+          <Link to="/" aria-label="DomainXpert Trade home">
+            <img
+              src="/images/domainxpert-trade.png"
+              alt="DomainXpert Trade"
+              className="h-9 w-auto max-w-[160px] rounded bg-white px-1 sm:max-w-[210px]"
+            />
+          </Link>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <a
+              href="#workspace"
+              className="hidden text-sm text-muted-foreground hover:text-foreground md:block"
+            >
+              Platform
+            </a>
+            <a
+              href="#pricing"
+              className="hidden text-sm text-muted-foreground hover:text-foreground md:block"
+            >
+              Pricing
+            </a>
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleMode}
-              aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label="Toggle color theme"
             >
-              {mode === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <Button variant="ghost" asChild>
+              <Link to="/login">Sign in</Link>
             </Button>
           </div>
         </nav>
       </header>
-
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="container mx-auto px-4 pt-20 pb-16 sm:pt-28 sm:pb-20">
-          <div className="text-center max-w-4xl mx-auto">
-            <a
-              href="https://www.openalgo.in/learn"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] mb-8 shadow-sm transition-colors hover:border-emerald-500/40 hover:bg-card"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px] shadow-emerald-400/60" />
-              <span className="text-amber-700 dark:text-amber-500">New Here</span>
-              <span className="text-muted-foreground">
-                - Learn Free on Open Varsity, {VARSITY_COURSES} Courses
-              </span>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-            </a>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
-              <span className="block text-foreground">Your Personal</span>
-              <span className="block text-primary">Trading Platform</span>
-            </h1>
-            <p className="text-lg sm:text-xl font-semibold mb-6 text-primary">
-              For algo, options and discretionary traders. Open source, community driven,
-              self-hosted.
-            </p>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
-              Connect TradingView, Amibroker or your own Python code, or build strategies visually
-              with no code. Trade options from the chain to multi-leg execution with built-in risk
-              management. Chart, scalp and analyse on one live feed, and test everything in Sandbox
-              mode first, across 30+ brokers on your own server.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" asChild>
-                <Link to="/login">
-                  <LogIn className="mr-2 h-5 w-5" />
-                  Login
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link to="/download">
-                  <Download className="mr-2 h-5 w-5" />
-                  Download
-                </Link>
-              </Button>
+        <section className="relative overflow-hidden border-b border-slate-800 bg-[#080f1c] text-white">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_75%_30%,rgba(16,185,129,0.12),transparent_55%)]"
+          />
+          <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[0.9fr_1.1fr] lg:py-28">
+            <div>
+              <p className="mb-6 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-400">
+                <span className="h-px w-8 bg-emerald-400" />
+                DomainXpert Trade / Building AI-assisted trading
+              </p>
+              <h1 className="text-5xl font-semibold leading-[1.06] tracking-tight sm:text-6xl lg:text-7xl">
+                AI-assisted trading.
+                <br />
+                Your strategy.
+                <br />
+                <span className="text-emerald-400">Your control.</span>
+              </h1>
+              <p className="mt-7 max-w-lg text-lg leading-relaxed text-slate-400">
+                We’re building a trading workspace that combines AI-assisted market research,
+                strategy exploration and paper trading review. Develop your approach with clear data
+                and keep control of every trading decision.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Button
+                  size="lg"
+                  asChild
+                  className="bg-emerald-400 font-semibold text-slate-950 hover:bg-emerald-300"
+                >
+                  <Link to="/signup">
+                    Start your trading journey <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  asChild
+                  className="border-slate-700 bg-transparent text-white hover:bg-slate-800 hover:text-white"
+                >
+                  <a href="#workspace">Explore the platform</a>
+                </Button>
+              </div>
+              <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-400">
+                <span>Paper trading</span>
+                <span>Market data</span>
+                <span>Performance reports</span>
+              </div>
+              <p className="mt-5 max-w-md text-[11px] leading-relaxed text-slate-500">
+                AI features are planned and not active in this preview. Live trading is disabled.
+                Trading involves risk; paper results do not guarantee real returns.
+              </p>
+            </div>
+            <TradingDeskPreview />
+          </div>
+          <div className="relative border-t border-slate-800">
+            <div className="mx-auto flex max-w-7xl flex-wrap justify-between gap-5 px-5 py-5 font-mono text-[11px] uppercase tracking-widest text-slate-400 sm:px-8">
+              <span>01 / Read the market</span>
+              <span>02 / Practice with purpose</span>
+              <span>03 / Review every session</span>
             </div>
           </div>
         </section>
-
-        {/* Integrates With */}
-        <section className="container mx-auto px-4 py-12 sm:py-16">
-          <p className="text-center text-xs sm:text-sm font-semibold uppercase tracking-[0.25em] text-amber-700 dark:text-amber-500 mb-6">
-            Integrates With
+        <section
+          id="workspace"
+          className="mx-auto max-w-7xl scroll-mt-24 px-5 py-16 sm:px-8 sm:py-24"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
+            Your trading toolkit
           </p>
-          <div className="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-4xl mx-auto">
-            {integrations.map((name) => (
-              <span
-                key={name}
-                className="rounded-full border border-border bg-card/60 px-4 py-2 text-sm text-foreground/90 shadow-sm"
+          <h2 className="mt-4 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
+            From market view to trading review.
+          </h2>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2">
+            {features.map(({ icon: Icon, title, text }) => (
+              <article key={title} className="rounded-2xl border p-6 sm:p-8">
+                <Icon
+                  aria-hidden="true"
+                  className="mb-6 h-6 w-6 text-emerald-600 dark:text-emerald-400"
+                />
+                <h3 className="text-xl font-semibold">{title}</h3>
+                <p className="mt-3 max-w-lg leading-relaxed text-muted-foreground">{text}</p>
+              </article>
+            ))}
+          </div>
+          <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
+            Market data may be delayed or unavailable. Simulated results exclude real execution
+            conditions and do not guarantee future performance.
+          </p>
+        </section>
+        <section id="ai" className="border-t bg-muted/20 px-5 py-16 sm:px-8">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2 lg:items-center">
+            <div>
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
+                <Sparkles className="h-4 w-4" /> AI research roadmap
+              </p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+                Trading first.
+                <br />
+                AI alongside.
+              </h2>
+              <p className="mt-5 max-w-lg leading-relaxed text-muted-foreground">
+                A research assistant designed to help you ask questions about market data, explore
+                strategy ideas and review paper trading results. You stay in control of every
+                trading decision.
+              </p>
+              <p className="mt-4 text-sm font-medium text-amber-700 dark:text-amber-400">
+                Planned for DomainXpert accounts. Not enabled in the current preview or included as
+                an active feature in this plan.
+              </p>
+            </div>
+            <div className="rounded-2xl border bg-card p-6 sm:p-8">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">DomainXpert AI</span>
+                <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                  Concept preview
+                </span>
+              </div>
+              <p className="mt-6 text-xs uppercase tracking-widest text-muted-foreground">
+                Questions you could explore
+              </p>
+              <ul className="mt-4 space-y-3 text-sm">
+                <li className="rounded-xl border p-4">
+                  “Help me understand this candlestick pattern.”
+                </li>
+                <li className="rounded-xl border p-4">
+                  “Explain the assumptions in my strategy draft.”
+                </li>
+                <li className="rounded-xl border p-4">“Summarize my paper trading results.”</li>
+              </ul>
+              <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
+                Illustrative prompts, not generated analysis. AI can make mistakes; it does not
+                guarantee returns or replace your judgment.
+              </p>
+            </div>
+          </div>
+        </section>
+        <section id="pricing" className="border-t bg-muted/20 px-5 py-16 sm:px-8">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2 lg:items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
+                Simple monthly membership
+              </p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+                One plan. Your complete paper workspace.
+              </h2>
+              <p className="mt-5 max-w-lg leading-relaxed text-muted-foreground">
+                One account for your trading process. Create your account to see payment
+                instructions and the features available in your workspace.
+              </p>
+            </div>
+            <div className="rounded-2xl border bg-card p-7 sm:p-10">
+              <h3 className="text-xl font-semibold">DomainXpert Trade</h3>
+              <p className="mt-5 text-5xl font-semibold tracking-tight">
+                ₹2,360<span className="text-base font-normal text-muted-foreground"> / month</span>
+              </p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                No GST charged separately. Access begins after payment verification. No automatic
+                renewal.
+              </p>
+              <ul className="my-7 space-y-3 text-sm">
+                <li>✓ Personal account and broker setup</li>
+                <li>✓ Paper order history and performance reports</li>
+                <li>✓ CSV exports for your records</li>
+              </ul>
+              <Button
+                size="lg"
+                asChild
+                className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                {name}
-              </span>
-            ))}
-          </div>
-        </section>
-
-        {/* One platform, many desks */}
-        <section className="container mx-auto px-4 py-16 sm:py-20">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-500 mb-6">
-              <Server className="h-3.5 w-3.5" />
-              One platform, many desks
-            </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
-              Not just an algo trading platform.
-              <span className="block text-muted-foreground">A complete trading desk.</span>
-            </h2>
-            <p className="text-base sm:text-lg text-muted-foreground">
-              Execution is only the starting point. Charting, no-code strategy building, options
-              analytics, scalping and sandbox testing all run inside the same self-hosted stack.
-            </p>
-          </div>
-
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
-            {platformDesks.map((desk) => (
-              <Card key={desk.title} className="h-full transition-colors hover:border-amber-400/40">
-                <CardContent className="space-y-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-500">
-                    <desk.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-bold text-base">{desk.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{desk.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {/* Trade & Research With Your AI */}
-        <section className="container mx-auto px-4 py-16 sm:py-20">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-6">
-              <Sparkles className="h-3.5 w-3.5" />
-              Made for AI
-            </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
-              Trade & Research With Your AI
-            </h2>
-            <p className="text-base sm:text-lg text-muted-foreground">
-              Two simple ways to bring AI into your trading - talk to your account like a trading
-              desk, or give your AI a toolkit to chart, scan, and backtest for you.
-            </p>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 max-w-6xl mx-auto">
-            {/* OpenAlgo MCP card */}
-            <Card className="group transition-colors hover:border-purple-400/40">
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400">
-                    <Bot className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold flex items-center gap-2">
-                      OpenAlgo MCP
-                      <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-                    </h3>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-1">
-                      Trade by Chatting
-                    </p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Connect your OpenAlgo account to Claude, Cursor, Windsurf, or ChatGPT. Place
-                  orders, check positions, and pull live prices by simply asking - no dashboards, no
-                  clicks.
-                </p>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {[
-                    '25+ built-in actions',
-                    'Claude / Cursor / Windsurf / ChatGPT',
-                    'Runs on your computer',
-                  ].map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-md bg-muted px-2.5 py-1 text-xs text-neutral-600 dark:text-neutral-400"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* OpenAlgo Skills card */}
-            <Card className="group transition-colors hover:border-emerald-400/40">
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                    <Wand2 className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold flex items-center gap-2">
-                      OpenAlgo Skills
-                      <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-                    </h3>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-1">
-                      Chart, Scan & Backtest
-                    </p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Ready-made trading abilities you can drop into your AI assistant - charts,
-                  scanners, custom indicators, and backtests with real brokerage costs. Works with
-                  40+ AI apps.
-                </p>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {['100+ indicators', '12 ready-made strategies', 'India / US / Crypto'].map(
-                    (tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-md bg-muted px-2.5 py-1 text-xs text-neutral-600 dark:text-neutral-400"
-                      >
-                        {tag}
-                      </span>
-                    )
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                <Link to="/signup">
+                  Get started <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+                Access starts after payment approval when subscriptions are enabled. Broker charges
+                are separate. Restricted preview does not enable live trading.
+              </p>
+            </div>
           </div>
         </section>
       </main>
-
-      {/* Footer */}
       <Footer />
     </div>
   )

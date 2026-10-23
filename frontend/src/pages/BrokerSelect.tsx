@@ -101,6 +101,10 @@ export default function BrokerSelect() {
           credentials: 'include',
         })
         const data = await response.json()
+        if (response.status === 402 && data.subscription_url === '/subscription') {
+          window.location.assign('/subscription')
+          return
+        }
 
         if (data.status === 'success') {
           setBrokerConfig(data)
@@ -272,7 +276,11 @@ export default function BrokerSelect() {
           <Card className="w-full max-w-md shadow-xl order-1 lg:order-2">
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
-                <img src="/images/domainxpert-trade.png" alt="DomainXpert Trade" className="h-16 w-auto max-w-full object-contain rounded bg-white px-2" />
+                <img
+                  src="/images/domainxpert-trade.png"
+                  alt="DomainXpert Trade"
+                  className="h-16 w-auto max-w-full object-contain rounded bg-white px-2"
+                />
               </div>
               <CardTitle className="text-2xl">Connect Your Trading Account</CardTitle>
               <CardDescription>
@@ -290,12 +298,19 @@ export default function BrokerSelect() {
                 <OwnGrowwCredentials
                   configured={Boolean(brokerConfig.credentials_configured)}
                   connectionBlocked={Boolean(brokerConfig.staging_restricted)}
-                  onSaved={() => setBrokerConfig((current) => current ? { ...current, credentials_configured: true } : current)}
+                  onSaved={() =>
+                    setBrokerConfig((current) =>
+                      current ? { ...current, credentials_configured: true } : current
+                    )
+                  }
                 />
               )}
               {brokerConfig?.staging_restricted && (
                 <Alert className="mb-4">
-                  <AlertDescription>Staging: you can save your credentials. Broker connections and trading are disabled.</AlertDescription>
+                  <AlertDescription>
+                    Staging: you can save your credentials. Broker connections and trading are
+                    disabled.
+                  </AlertDescription>
                 </Alert>
               )}
               {brokerConfig?.flow_editing_preview && (
@@ -344,7 +359,18 @@ export default function BrokerSelect() {
                   </Alert>
                 )}
 
-                <Button type="submit" className="w-full" disabled={Boolean(brokerConfig?.staging_restricted) || !selectedBroker || isSubmitting || Boolean(brokerConfig?.per_user_credentials && !brokerConfig.credentials_configured)}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={
+                    Boolean(brokerConfig?.staging_restricted) ||
+                    !selectedBroker ||
+                    isSubmitting ||
+                    Boolean(
+                      brokerConfig?.per_user_credentials && !brokerConfig.credentials_configured
+                    )
+                  }
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -353,7 +379,9 @@ export default function BrokerSelect() {
                   ) : (
                     <>
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      {brokerConfig?.staging_restricted ? 'Connection disabled in staging' : 'Connect Account'}
+                      {brokerConfig?.staging_restricted
+                        ? 'Connection disabled in staging'
+                        : 'Connect Account'}
                     </>
                   )}
                 </Button>
@@ -371,8 +399,8 @@ export default function BrokerSelect() {
               Connect Your <span className="text-primary">Broker</span>
             </h1>
             <p className="text-lg lg:text-xl mb-8 text-muted-foreground">
-              Link your trading account to start executing trades through DomainXpert Trade's algorithmic
-              trading platform.
+              Link your trading account to start executing trades through DomainXpert Trade's
+              algorithmic trading platform.
             </p>
 
             <Alert className="mb-6">

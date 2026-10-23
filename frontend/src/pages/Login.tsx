@@ -1,14 +1,4 @@
-import {
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  Github,
-  Info,
-  Loader2,
-  LogIn,
-  MessageCircle,
-  ShieldCheck,
-} from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Info, Loader2, LogIn, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -222,7 +212,11 @@ export default function Login() {
           <Card className="w-full max-w-md order-1 lg:order-2 shadow-xl">
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
-                <img src="/images/domainxpert-trade.png" alt="DomainXpert Trade" className="h-20 w-auto max-w-full object-contain rounded bg-white px-1" />
+                <img
+                  src="/images/domainxpert-trade.png"
+                  alt="DomainXpert Trade"
+                  className="h-20 w-auto max-w-full object-contain rounded bg-white px-1"
+                />
               </div>
               <CardTitle className="text-2xl">Welcome Back</CardTitle>
               <CardDescription>Sign in to your DomainXpert Trade account</CardDescription>
@@ -381,34 +375,15 @@ export default function Login() {
               <Info className="h-4 w-4" />
               <AlertTitle>First Time User?</AlertTitle>
               <AlertDescription>
-                <Link to="/signup" className="text-primary underline">Create your account — Sign up</Link>
+                <Link to="/signup" className="text-primary underline">
+                  Create your account — Sign up
+                </Link>
               </AlertDescription>
             </Alert>
 
-            <div className="flex justify-center lg:justify-start gap-4">
-              <Button variant="outline" asChild>
-                <a
-                  href="https://github.com/marketcalls/openalgo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2"
-                >
-                  <Github className="h-5 w-5" />
-                  GitHub
-                </a>
-              </Button>
-              <Button variant="outline" asChild>
-                <a
-                  href="https://openalgo.in/discord"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  Discord
-                </a>
-              </Button>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Your credentials, your account, your trading workspace.
+            </p>
           </div>
         </div>
       </div>

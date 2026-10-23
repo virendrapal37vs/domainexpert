@@ -363,6 +363,18 @@ def create_app():
     app.register_blueprint(account_broker_bp)
     from blueprints.account_signup import signup_bp
     app.register_blueprint(signup_bp)
+    from blueprints.account_subscription import subscription_bp, install_subscription_gate
+    from services import manual_subscription
+    if manual_subscription.enabled():
+        if not staging_safe():
+            raise RuntimeError('Manual subscriptions are a restricted staging preview only')
+        manual_subscription.init_db()
+    from services import razorpay_subscription
+    if razorpay_subscription.enabled():
+        razorpay_subscription.init_db()
+    app.register_blueprint(subscription_bp)
+    csrf.exempt(app.view_functions['account_subscription.razorpay_webhook'])
+    install_subscription_gate(app)
     from blueprints.paper_preview import paper_preview_bp
     app.register_blueprint(paper_preview_bp)
     from utils.account_socket import register_account_socket
