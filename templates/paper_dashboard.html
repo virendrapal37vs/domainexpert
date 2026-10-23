@@ -7,7 +7,7 @@
 {% macro money(value) %}{% if value is none %}—{% else %}₹{{ '{:,.2f}'.format(value) }}{% endif %}{% endmacro %}
 <header class="top"><nav class="nav" aria-label="Account navigation"><div class="brand"><img src="/images/domainxpert-trade.png" alt="DomainXpert Trade"><span class="pill">Paper · Staging</span></div><div class="account"><strong>{{ username }}</strong><span><a href="/broker">Account &amp; Groww settings</a></span></div></nav></header>
 <main><div class="heading"><div><div class="eyebrow">Your practice workspace</div><h1>Paper trading dashboard</h1><p class="sub">Your simulated capital, preview positions and recent activity.</p></div><a class="button" href="{{ url_for('paper_preview.dashboard') }}">Refresh dashboard</a></div>
-<div class="notice"><strong>Simulation only.</strong> No real broker orders. This page reads your saved staging records; it does not fetch quotes or check Groww authentication. Prices and P&amp;L are not live.</div>
+<div class="notice"><strong>Simulation only.</strong> No real broker orders. Page refresh reads saved staging records only. The manual quote button below requests your own Groww quote. Estimates are snapshots, not a live feed.</div>
 <p class="foot" style="margin-bottom:20px"><a class="button" href="{{ url_for('paper_preview.dashboard_export', kind='orders') }}">Export latest 50 orders CSV</a> <a class="button" href="{{ url_for('paper_preview.dashboard_export', kind='positions') }}">Export positions &amp; realized P&amp;L CSV</a><br>Simulation records only. Positions export includes DXPAPER and DXBHEL; realized P&amp;L is cumulative, not per order.</p>
 <section class="metrics" aria-label="Paper account summary">
 <div class="card metric"><div class="label">Sandbox available cash</div><div class="number">{{ money(available_cash) }}</div><div class="hint">{% if available_cash is none %}Created on your first paper order{% else %}Shared across your staging simulations{% endif %}</div></div>
@@ -15,8 +15,38 @@
 <div class="card metric"><div class="label">Preview realized P&amp;L</div><div class="number {% if preview_realized_pnl < 0 %}negative{% else %}positive{% endif %}">{{ money(preview_realized_pnl) }}</div><div class="hint">DXPAPER + DXBHEL only</div></div>
 <div class="card metric"><div class="label">Open preview positions</div><div class="number">{{ open_positions }}</div><div class="hint">Instruments with a non-zero quantity</div></div>
 </section>
+{% if groww_paper_available %}
+<section class="card metric" style="margin-bottom:22px" aria-label="DXBHEL valuation">
+<h2>DXBHEL estimated unrealized P&amp;L</h2>
+<p class="hint">Your open DXBHEL position only. DXPAPER is excluded. No automatic quote requests.</p>
+<form data-submit-once method="post" action="{{ url_for('paper_preview.dashboard_quote') }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button class="button" type="submit">Refresh Groww quote &amp; estimate</button></form>
+{% if valuation is defined %}
+{% if valuation.status == 'fresh' %}<div data-valuation-expiry="{{ valuation.valid_until }}">
+<p class="number {{ 'negative' if valuation.unrealized_pnl < 0 else 'positive' }}" data-estimate>{{ money(valuation.unrealized_pnl) }}</p>
+<p class="hint">{{ valuation.quantity }} shares · BHEL/NSE quote {{ money(valuation.quote_price) }} · Last trade {{ valuation.traded_at_ist }}</p>
+<p class="hint" data-freshness>Snapshot valid for at most 2 minutes from last trade.</p></div>
+{% elif valuation.status == 'closed' %}<p class="number">{{ money(valuation.unrealized_pnl) }}</p>{% endif %}
+<p role="status">{{ valuation.message }}</p>
+{% else %}<p class="hint">Not requested. Use the button for a fresh quote and estimate.</p>{% endif %}
+</section>
+{% endif %}
 <div class="content"><div><section class="card"><div class="panel-head"><h2>Paper positions</h2><span class="tag">NSE · CNC</span></div><div class="scroll"><table><thead><tr><th>Instrument</th><th class="numeric">Quantity</th><th class="numeric">Avg. entry</th><th class="numeric">Realized P&amp;L</th></tr></thead><tbody>{% for row in positions %}<tr><td><strong>{{ row.symbol }}</strong><span class="secondary">{{ row.source }}</span></td><td class="numeric">{{ row.quantity }}</td><td class="numeric">{{ money(row.average_price) }}</td><td class="numeric">{{ money(row.realized_pnl) }}</td></tr>{% endfor %}</tbody></table></div></section>
 <section class="card orders"><div class="panel-head"><h2>Recent preview orders</h2><span class="hint">Latest 50</span></div><div class="scroll"><table><thead><tr><th>Order ID</th><th>Instrument</th><th>Side</th><th class="numeric">Qty.</th><th>Status</th><th class="numeric">Simulated fill</th></tr></thead><tbody>{% for row in orders %}<tr><td>{{ row.orderid }}</td><td>{{ row.symbol }}</td><td class="{{ 'buy' if row.action == 'BUY' else 'sell' }}">{{ row.action }}</td><td class="numeric">{{ row.quantity }}</td><td><span class="tag {% if row.status == 'complete' %}complete{% elif row.status == 'rejected' %}rejected{% endif %}">{{ row.status }}</span></td><td class="numeric">{{ money(row.price) }}</td></tr>{% else %}<tr><td colspan="6" class="empty">No preview orders yet.<br>Open a simulation to place your first paper order.</td></tr>{% endfor %}</tbody></table></div></section>
 <p class="foot">Refreshed {{ refreshed_at }}. Only your DXPAPER and DXBHEL preview records appear here. Sandbox balances may include your other simulations.</p></div>
-<aside class="card side"><div class="eyebrow">Broker setup</div><h2>Groww</h2><div class="status"><strong>{% if groww_credentials_saved %}<span class="dot"></span>Credentials saved{% else %}Credentials not saved{% endif %}</strong><span class="hint">Authentication has not been checked by this dashboard.</span></div><p>Use your account settings to run a manual read-only connection or history check.</p><a class="button" href="/broker">Groww settings &amp; checks</a><hr style="border:0;border-top:1px solid var(--line);margin:22px 0"><h2>Open a simulation</h2><p>Practice with fixed demo prices or request a new Groww BHEL quote for each simulated order.</p>{% if groww_paper_available %}<a class="button primary" href="{{ url_for('paper_preview.groww_page') }}">Groww quote simulation</a>{% endif %}<a class="button" href="{{ url_for('paper_preview.page') }}">Fixed-price demo</a><p>DXBHEL represents simulated shares. Real trading remains disabled.</p></aside></div>
-</main></body></html>
+<aside class="card side"><div class="eyebrow">Broker setup</div><h2>Groww</h2><div class="status"><strong>{% if groww_credentials_saved %}<span class="dot"></span>Credentials saved{% else %}Credentials not saved{% endif %}</strong><span class="hint">Saved credentials alone do not confirm current Groww approval.</span></div><p>Use your account settings to run a manual read-only connection or history check.</p><a class="button" href="/broker">Groww settings &amp; checks</a><hr style="border:0;border-top:1px solid var(--line);margin:22px 0"><h2>Open a simulation</h2><p>Practice with fixed demo prices or request a new Groww BHEL quote for each simulated order.</p>{% if groww_paper_available %}<a class="button primary" href="{{ url_for('paper_preview.groww_page') }}">Groww quote simulation</a>{% endif %}<a class="button" href="{{ url_for('paper_preview.page') }}">Fixed-price demo</a><p>DXBHEL represents simulated shares. Real trading remains disabled.</p></aside></div>
+</main>{% include 'paper_submit_guard.html' %}
+<script>
+(() => {
+ const panel = document.querySelector('[data-valuation-expiry]');
+ if (!panel) return;
+ const expire = () => {
+   if (Date.now() / 1000 > Number(panel.dataset.valuationExpiry)) {
+     panel.querySelector('[data-estimate]').textContent = '—';
+     panel.querySelector('[data-freshness]').textContent = 'Stale snapshot. Refresh the quote manually for a new estimate.';
+   }
+ };
+ expire(); setInterval(expire, 1000); window.addEventListener('pageshow', expire);
+})();
+</script></body></html>

@@ -22,6 +22,21 @@ def dashboard():
     return response
 
 
+@paper_preview_bp.post('/dashboard/quote')
+@require_account
+@limiter.limit('3 per minute;10 per hour')
+def dashboard_quote():
+    from services.paper_dashboard import dashboard_snapshot
+    from services.paper_valuation import estimate
+    owner = current_account().username
+    valuation = estimate(owner)
+    data = dashboard_snapshot(owner)
+    status = 503 if valuation['status'] == 'unavailable' else 200
+    if request.is_json or request.args.get('format') == 'json':
+        return jsonify(**data, valuation=valuation), status
+    return make_response(render_template('paper_dashboard.html', **data, valuation=valuation), status)
+
+
 @paper_preview_bp.get('/dashboard/export/<kind>.csv')
 @require_account
 def dashboard_export(kind):
