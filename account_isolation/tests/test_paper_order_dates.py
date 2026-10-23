@@ -33,7 +33,7 @@ def test_inclusive_ist_dates_and_csv_owner(dashboard_app):
     assert csv[0]['placed_at_ist'] == data['orders'][0]['placed_at_ist']
     html=alice.get('/paper-preview/dashboard'+query)
     assert html.status_code == 200 and html.headers['Cache-Control'] == 'no-store'
-    assert b'start=2026-10-23' in html.data and b'Showing 2 of 2 matching' in html.data
+    assert b'start=2026-10-23' in html.data and 'Showing 1–2 of 2 matching'.encode() in html.data
     assert b'other-account' not in html.data
     bob=signed_client(app,'bob').get('/paper-preview/dashboard'+query+'&format=json').json
     assert {o['orderid'] for o in bob['orders']} == {'other-account'}

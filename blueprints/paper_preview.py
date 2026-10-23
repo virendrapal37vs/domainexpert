@@ -14,7 +14,7 @@ paper_preview_bp = Blueprint('paper_preview', __name__, url_prefix='/paper-previ
 def filtered_dashboard(owner):
     from services.paper_dashboard import dashboard_snapshot
     try:
-        return dashboard_snapshot(owner, request.args.get('start', ''), request.args.get('end', ''))
+        return dashboard_snapshot(owner, request.args.get('start', ''), request.args.get('end', ''), request.args.get('page', '1'))
     except ValueError as error:
         abort(400, description=str(error))
 
@@ -33,11 +33,12 @@ def dashboard():
 @require_account
 @limiter.limit('3 per minute;10 per hour')
 def dashboard_quote():
-    from services.paper_dashboard import parse_order_dates
+    from services.paper_dashboard import parse_order_dates, parse_order_page
     from services.paper_valuation import estimate
     owner = current_account().username
     try:
         parse_order_dates(request.args.get('start', ''), request.args.get('end', ''))
+        parse_order_page(request.args.get('page', '1'))
     except ValueError as error:
         abort(400, description=str(error))
     valuation = estimate(owner)
@@ -72,7 +73,8 @@ def dashboard_export(kind):
         writer.writerow(values)
     response = make_response('\ufeff' + output.getvalue())
     response.headers['Content-Type'] = 'text/csv; charset=utf-8'
-    response.headers['Content-Disposition'] = f'attachment; filename="paper-{kind}.csv"'
+    filename = f"paper-orders-page-{data['order_page']}.csv" if kind == 'orders' else 'paper-positions.csv'
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
     response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
