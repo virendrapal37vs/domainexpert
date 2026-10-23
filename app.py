@@ -684,6 +684,11 @@ def create_app():
             f"{redact_url_credentials(request.path)}"
         )
 
+        from utils.staging_mode import staging_safe
+        if staging_safe():
+            from utils.staging_rate_limit import rate_limit_response
+            return rate_limit_response()
+
         # For API requests, return JSON response
         if request.path.startswith("/api/"):
             return {

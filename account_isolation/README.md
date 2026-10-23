@@ -1071,3 +1071,16 @@ close/P&L, cross-account spoofing, oversells, invalid inputs, CSRF, disabled fla
 quote failures without order mutation, and no events/network. Provider tests
 cover timestamps, invalid numeric data, range checks, fixed endpoint and missing
 auth. Actual Groww/manual browser fills must be checked during market hours.
+
+### Clear restricted-staging rate-limit responses
+
+The app's existing 429 handler now returns a direct response in restricted staging
+instead of redirecting to `/rate-limited`, which the staging gate blocks. API,
+auth and JSON requests get JSON; ordinary form submissions get a small HTML
+message with a safe GET link to `/broker`. Responses retain HTTP 429 and use
+`Cache-Control: no-store`. `Retry-After` comes from Flask-Limiter's active reset
+window when available; unavailable reset metadata uses a generic wait message.
+No route is newly permitted and no rate limit is increased, reset or bypassed.
+Non-staging responses are unchanged. Tests exercise actual limiter rejection
+through the shipped app handler, hour-window timing, both response formats,
+blocked trading routes and unchanged non-staging behavior.
