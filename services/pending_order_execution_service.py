@@ -133,6 +133,14 @@ def execute_approved_order(pending_order_id: int) -> tuple[bool, dict[str, Any],
                 400,
             )
 
+        from utils.subscription_access import subscription_access_allowed
+        if not subscription_access_allowed(pending_order.user_id):
+            return False, {
+                "status": "error",
+                "message": "An active subscription is required before executing this order.",
+                "subscription_url": "/subscription",
+            }, 402
+
         # Claim before anything can reach the broker. An approved order is
         # sent at most once: two approvals racing (a double click, Approve on
         # one device and Approve All on another) could both pass the status

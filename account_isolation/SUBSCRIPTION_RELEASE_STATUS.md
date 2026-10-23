@@ -13,12 +13,14 @@ This implementation is a restricted staging preview. Razorpay accepts test keys 
 - API-key validation checks access even on a valid-key cache hit. Broker-name and token caches cannot restore an expired subscription.
 - Proxy authorization checks subscription access before actions and delivery, including legacy broker mode. Browser private order events are suppressed after expiry; logout notifications remain available.
 - Missing subscription data and database errors deny guarded API/proxy access. Test/manual grants cannot authorize these paths outside restricted staging.
+- Username-based broker-token reads check access before both cached and fresh retrieval. Pending approved orders check access before claiming execution or loading credentials; denied orders are not sent or marked as submitted.
+- A synthetic Flow broker-node test verifies that expiry between nodes blocks the next broker call. Account Flow execution remains disabled in staging.
 
 `test_subscription_access_lifecycle.py` exercises the access transition through Flask HTTP requests and temporary SQLite databases. Gateway API responses are simulated; it does not test a live broker or a public webhook delivery.
 
 ## Before a public paid release
 
-- Audit direct-token and background execution paths that do not call shared API-key authentication. Shared API-key/proxy/browser-delivery guards are implemented, but the application is not yet a universal production paywall.
+- Complete the production entry-point audit, including legacy session-resume calls and callers that hold raw broker tokens outside the shared token/API-key helpers. Shared API-key, token-read, pending-order and private-delivery guards are implemented; this is not yet a universal production paywall.
 - Verify webhook delivery on the intended HTTPS environment, including retries and duplicate events. A localhost SSH tunnel does not provide an inbound webhook URL.
 - Implement and test the chosen refund/dispute access policy and payment reconciliation operations.
 - Replace exposed test credentials before release; configure live credentials separately only after live-mode code and merchant approval are ready. The current code intentionally rejects live keys.

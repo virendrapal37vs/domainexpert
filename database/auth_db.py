@@ -750,6 +750,10 @@ def get_auth_token(name, bypass_cache: bool = False):
         logger.debug("get_auth_token called with empty/None name, returning None")
         return None
 
+    from utils.subscription_access import subscription_access_allowed
+    if not subscription_access_allowed(name):
+        return None
+
     cache_key = f"auth-{name}"
 
     # Bypass cache if requested (e.g., after 403 error for fresh token)
