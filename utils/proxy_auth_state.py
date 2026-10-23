@@ -3,6 +3,9 @@ import hashlib
 
 
 def proxy_auth_stamp(username, broker, presented_key=None):
+    from utils.subscription_access import subscription_access_allowed
+    if not subscription_access_allowed(username):
+        return None
     from database.auth_db import ApiKeys, Auth, PEPPER, db_session, ph, decrypt_token
     from database.user_db import User
     if not isinstance(username, str) or not username or not broker:

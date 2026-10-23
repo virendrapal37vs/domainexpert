@@ -27,6 +27,9 @@ def emit_order(socketio, event, name, payload):
     username = get_username_by_apikey(api_key)
     if not username:
         return
+    from utils.subscription_access import subscription_access_allowed
+    if not subscription_access_allowed(username):
+        return
     prune_account_sockets(socketio, username)
     socketio.emit(name, payload, to=room_for(username), namespace='/')
 
@@ -43,6 +46,9 @@ def register_account_socket(socketio):
         from utils.account_access import current_account
         account = current_account()
         if account is None or not session.get('logged_in') or not socket_session_active(account.username):
+            return False
+        from utils.subscription_access import subscription_access_allowed
+        if not subscription_access_allowed(account.username):
             return False
         join_room(room_for(account.username))
         with socketio._account_connection_lock:
@@ -66,6 +72,9 @@ def emit_account(socketio, username, name, payload):
         socketio.emit(name, payload)
         return
     if not isinstance(username, str) or not username:
+        return
+    from utils.subscription_access import subscription_access_allowed
+    if not subscription_access_allowed(username):
         return
     prune_account_sockets(socketio, username)
     socketio.emit(name, payload, to=room_for(username), namespace='/')

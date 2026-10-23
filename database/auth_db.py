@@ -1046,6 +1046,7 @@ def verify_api_key(provided_api_key):
     - Cache invalidated on key regeneration
     """
     import hashlib
+    from utils.subscription_access import subscription_access_allowed
 
     from flask import has_request_context, request
 
@@ -1067,7 +1068,7 @@ def verify_api_key(provided_api_key):
     cached_user_id = verified_api_key_cache.get(cache_key, MISSING)
     if cached_user_id is not MISSING:
         logger.debug(f"API key verified from cache for user_id: {cached_user_id}")
-        return cached_user_id
+        return cached_user_id if subscription_access_allowed(cached_user_id) else None
 
     # Step 3: Cache miss - perform expensive Argon2 verification. The
     # generations are taken before the query, so a key regenerated while this
@@ -1086,7 +1087,7 @@ def verify_api_key(provided_api_key):
                 # Valid key found - cache it
                 _fill(verified_api_key_cache, cache_key, api_key_obj.user_id, verified_generation)
                 logger.debug(f"API key verified and cached for user_id: {api_key_obj.user_id}")
-                return api_key_obj.user_id
+                return api_key_obj.user_id if subscription_access_allowed(api_key_obj.user_id) else None
             except VerifyMismatchError:
                 continue
 
@@ -1125,6 +1126,10 @@ def get_username_by_apikey(provided_api_key):
 
 def get_broker_name(provided_api_key):
     """Get only the broker name for a valid API key with caching"""
+    from services import manual_subscription as billing
+    # A broker-name cache hit must not bypass a fresh subscription check.
+    if billing.enabled() and not verify_api_key(provided_api_key):
+        return None
     # Check if broker name is in cache
     cached_broker = broker_cache.get(provided_api_key, MISSING)
     if cached_broker is not MISSING:

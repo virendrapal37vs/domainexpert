@@ -6,6 +6,13 @@ from flask import Flask
 from flask_wtf.csrf import CSRFProtect
 
 
+@pytest.fixture(autouse=True)
+def isolated_subscription_flags(monkeypatch):
+    # Individual billing fixtures opt in; never inherit deployed billing flags.
+    monkeypatch.setenv('DOMAINXPERT_MANUAL_SUBSCRIPTIONS', 'false')
+    monkeypatch.setenv('DOMAINXPERT_RAZORPAY_TEST', 'false')
+
+
 @pytest.fixture
 def main_app(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "sqlite:///" + str(tmp_path / "main-test.db"))

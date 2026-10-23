@@ -1810,6 +1810,12 @@ class WebSocketProxy:
         await self.send_message(client_id, response)
 
     async def _account_authorized(self, client_id):
+        from utils.subscription_access import subscription_access_allowed
+        if not await aio.to_thread(subscription_access_allowed, self.user_mapping.get(client_id)):
+            websocket = self.clients.get(client_id)
+            if websocket is not None:
+                await websocket.close(code=1008, reason="Subscription access expired or unavailable")
+            return False
         from database.account_broker_db import per_user_groww_enabled
         if not per_user_groww_enabled():
             return True
