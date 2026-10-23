@@ -11,11 +11,18 @@ ROOT = Path(__file__).resolve().parents[1]
 paper_preview_bp = Blueprint('paper_preview', __name__, url_prefix='/paper-preview')
 
 
+def filtered_dashboard(owner):
+    from services.paper_dashboard import dashboard_snapshot
+    try:
+        return dashboard_snapshot(owner, request.args.get('start', ''), request.args.get('end', ''))
+    except ValueError as error:
+        abort(400, description=str(error))
+
+
 @paper_preview_bp.get('/dashboard')
 @require_account
 def dashboard():
-    from services.paper_dashboard import dashboard_snapshot
-    data = dashboard_snapshot(current_account().username)
+    data = filtered_dashboard(current_account().username)
     response = (jsonify(data) if request.args.get('format') == 'json'
                 else make_response(render_template('paper_dashboard.html', **data)))
     response.headers['Cache-Control'] = 'no-store'
@@ -26,11 +33,15 @@ def dashboard():
 @require_account
 @limiter.limit('3 per minute;10 per hour')
 def dashboard_quote():
-    from services.paper_dashboard import dashboard_snapshot
+    from services.paper_dashboard import parse_order_dates
     from services.paper_valuation import estimate
     owner = current_account().username
+    try:
+        parse_order_dates(request.args.get('start', ''), request.args.get('end', ''))
+    except ValueError as error:
+        abort(400, description=str(error))
     valuation = estimate(owner)
-    data = dashboard_snapshot(owner)
+    data = filtered_dashboard(owner)
     status = 503 if valuation['status'] == 'unavailable' else 200
     if request.is_json or request.args.get('format') == 'json':
         return jsonify(**data, valuation=valuation), status
@@ -42,11 +53,10 @@ def dashboard_quote():
 def dashboard_export(kind):
     import csv
     import io
-    from services.paper_dashboard import dashboard_snapshot
     if kind not in ('orders', 'positions'):
         abort(404)
-    data = dashboard_snapshot(current_account().username)
-    columns = (('orderid', 'symbol', 'action', 'quantity', 'status', 'price')
+    data = filtered_dashboard(current_account().username)
+    columns = (('orderid', 'placed_at_ist', 'symbol', 'action', 'quantity', 'status', 'price')
                if kind == 'orders' else ('symbol', 'quantity', 'average_price', 'realized_pnl', 'source'))
     output = io.StringIO(newline='')
     writer = csv.writer(output)
