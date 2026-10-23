@@ -95,6 +95,10 @@ state['price']=420
 response=clients['alice'].post(url+'/order',json=dict(action='SELL',quantity=3),headers=headers['alice'])
 assert response.status_code==200,response.json
 assert response.json['quantity']==0 and response.json['realized_pnl']==60
+report=clients['alice'].get('/paper-preview/daily-pnl?format=json')
+assert report.status_code==200,report.json
+assert report.json['total_realized_pnl']=='60.00',report.json
+assert report.json['rows'][0]['dxbhel_pnl']=='60.00'
 assert {k:v for k,v in clients['bob'].get(url+'?format=json').json.items() if k != 'request_token'}==bob
 # Quote failures must not initialize funds or create even a rejected order.
 before=db.SandboxOrders.query.count()

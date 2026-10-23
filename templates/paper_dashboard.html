@@ -14,6 +14,7 @@
 <button class="button" type="submit">Filter orders</button><a class="button" href="{{ url_for('paper_preview.dashboard') }}">Clear dates</a>
 <span class="hint">Up to 366 days, including both dates. Filters apply to orders only.</span></form>
 <p class="foot" style="margin-bottom:20px"><a class="button" href="{{ url_for('paper_preview.dashboard_export', kind='orders', start=order_start, end=order_end, page=order_page) }}">Export orders page {{ order_page }} CSV</a> <a class="button" href="{{ url_for('paper_preview.dashboard_export', kind='positions') }}">Export positions &amp; realized P&amp;L CSV</a><br>Orders CSV exports only the current page (up to 50 orders) with the selected dates. Use Next/Previous to export other pages. Positions export includes DXPAPER and DXBHEL; realized P&amp;L is cumulative, not per order.</p>
+<p><a class="button" href="{{ url_for('paper_preview.daily_pnl', start=order_start, end=order_end) }}">Daily realized P&amp;L report</a></p>
 <section class="metrics" aria-label="Paper account summary">
 <div class="card metric"><div class="label">Sandbox available cash</div><div class="number">{{ money(available_cash) }}</div><div class="hint">{% if available_cash is none %}Created on your first paper order{% else %}Shared across your staging simulations{% endif %}</div></div>
 <div class="card metric"><div class="label">Sandbox used margin</div><div class="number">{{ money(used_margin) }}</div><div class="hint">Across your staging sandbox</div></div>

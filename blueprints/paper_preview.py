@@ -19,6 +19,34 @@ def filtered_dashboard(owner):
         abort(400, description=str(error))
 
 
+@paper_preview_bp.get('/daily-pnl')
+@require_account
+def daily_pnl():
+    from services.paper_daily_pnl import daily_report
+    try:
+        data = daily_report(current_account().username, request.args.get('start', ''), request.args.get('end', ''))
+    except ValueError as error:
+        abort(400, description=str(error))
+    status = 200 if data['status'] == 'success' else 409
+    if request.args.get('format') == 'json':
+        return jsonify(data), status
+    if request.args.get('format') == 'csv':
+        if status != 200:
+            return jsonify(error=data['message']), status
+        import csv
+        import io
+        output = io.StringIO(newline='')
+        writer = csv.DictWriter(output, fieldnames=['date_ist','fills','buy_quantity','sell_quantity','dxpaper_pnl','dxbhel_pnl','realized_pnl'])
+        writer.writeheader()
+        writer.writerows(data['rows'])
+        response = make_response('\ufeff'+output.getvalue())
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+        response.headers['Content-Disposition'] = 'attachment; filename="paper-daily-realized-pnl.csv"'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        return response
+    return make_response(render_template('paper_daily_pnl.html', **data), status)
+
+
 @paper_preview_bp.get('/dashboard')
 @require_account
 def dashboard():
