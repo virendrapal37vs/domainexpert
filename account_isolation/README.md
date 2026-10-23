@@ -1107,3 +1107,6 @@ WebSockets or background workers. Refresh is an ordinary GET. Groww simulation
 links appear only when that preview flag is enabled. Tests use real SQLite to
 check owner filtering, other-symbol exclusion, no mutations, empty accounts,
 latest-50 bounds, credential metadata, gated access and no network.
+
+### Paper dashboard CSV exports
+Signed-in staging accounts can download the latest 50 preview orders or the two preview positions with cumulative realized P&L from the dashboard. Exports use the authenticated owner, ignore supplied identity parameters, and share the dashboard's DXPAPER/DXBHEL, NSE/CNC scope. They do not contact Groww or mutate balances. Empty orders export has headers only. Responses are UTF-8 CSV attachments with no-store; formula-like text is prefixed for spreadsheet safety. This is simulation data, not a broker statement or tax report.

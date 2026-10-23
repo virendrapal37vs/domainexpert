@@ -7,7 +7,7 @@ from types import SimpleNamespace
 SYMBOL = 'DXPAPER'
 GROWW_PAPER_SYMBOL = 'DXBHEL'
 _active = ContextVar('domainxpert_paper_preview', default=False)
-ENDPOINTS = frozenset({'paper_preview.page', 'paper_preview.order', 'paper_preview.dashboard'})
+ENDPOINTS = frozenset({'paper_preview.page', 'paper_preview.order', 'paper_preview.dashboard', 'paper_preview.dashboard_export'})
 GROWW_ENDPOINTS = frozenset({'paper_preview.groww_page', 'paper_preview.groww_quote', 'paper_preview.groww_order'})
 
 

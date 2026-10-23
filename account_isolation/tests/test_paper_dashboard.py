@@ -105,3 +105,53 @@ def test_dashboard_gate_and_latest_fifty(dashboard_app, monkeypatch):
     assert b'Groww quote simulation</a>' not in client.get('/paper-preview/dashboard').data
     monkeypatch.setenv('DOMAINXPERT_PAPER_PREVIEW', 'false')
     assert client.get('/paper-preview/dashboard').status_code == 403
+
+
+def read_csv(response):
+    import csv
+    import io
+    return list(csv.DictReader(io.StringIO(response.data.decode('utf-8-sig'))))
+
+
+def test_csv_exports_owner_scope_and_logout(dashboard_app, monkeypatch):
+    app, db, _ = dashboard_app
+    seed(db)
+    url = '/paper-preview/dashboard/export/'
+    assert app.test_client().get(url + 'orders.csv').status_code == 401
+    alice = signed_client(app, 'alice')
+    response = alice.get(url + 'orders.csv?username=bob&symbol=BHEL')
+    assert response.status_code == 200
+    assert response.headers['Cache-Control'] == 'no-store'
+    assert response.mimetype == 'text/csv'
+    assert 'attachment;' in response.headers['Content-Disposition']
+    assert {row['orderid'] for row in read_csv(response)} == {'alice-DXPAPER', 'alice-DXBHEL'}
+    positions = read_csv(alice.get(url + 'positions.csv'))
+    assert {row['symbol'] for row in positions} == {'DXPAPER', 'DXBHEL'}
+    assert sum(float(row['realized_pnl']) for row in positions) == 40
+    bob = signed_client(app, 'bob')
+    assert {row['orderid'] for row in read_csv(bob.get(url + 'orders.csv'))} == {'bob-DXBHEL'}
+    assert alice.get(url + 'unknown.csv').status_code == 404
+    with alice.session_transaction() as session:
+        session.clear()
+    assert alice.get(url + 'positions.csv').status_code == 401
+    assert db.SandboxOrders.query.count() == 4
+    monkeypatch.setenv('DOMAINXPERT_PAPER_PREVIEW', 'false')
+    assert bob.get(url + 'orders.csv').status_code == 403
+
+
+def test_csv_empty_bounded_and_formula_safe(dashboard_app):
+    app, db, _ = dashboard_app
+    client = signed_client(app, 'alice')
+    url = '/paper-preview/dashboard/export/orders.csv'
+    assert read_csv(client.get(url)) == []
+    assert db.SandboxFunds.query.count() == 0
+    for index in range(55):
+        db.db_session.add(db.SandboxOrders(user_id='alice', orderid=f'=SUM(1,2)-{index}', symbol='DXBHEL',
+            exchange='NSE', product='CNC', action='BUY', quantity=1, price_type='LIMIT',
+            pending_quantity=1, order_status='open'))
+    db.db_session.commit()
+    rows = read_csv(client.get(url))
+    assert len(rows) == 50
+    assert rows[0]['orderid'] == "'=SUM(1,2)-54"
+    assert rows[-1]['orderid'] == "'=SUM(1,2)-5"
+    assert rows[0]['price'] == ''

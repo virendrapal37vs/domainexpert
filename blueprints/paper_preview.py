@@ -22,6 +22,37 @@ def dashboard():
     return response
 
 
+@paper_preview_bp.get('/dashboard/export/<kind>.csv')
+@require_account
+def dashboard_export(kind):
+    import csv
+    import io
+    from services.paper_dashboard import dashboard_snapshot
+    if kind not in ('orders', 'positions'):
+        abort(404)
+    data = dashboard_snapshot(current_account().username)
+    columns = (('orderid', 'symbol', 'action', 'quantity', 'status', 'price')
+               if kind == 'orders' else ('symbol', 'quantity', 'average_price', 'realized_pnl', 'source'))
+    output = io.StringIO(newline='')
+    writer = csv.writer(output)
+    writer.writerow(columns)
+    for row in data[kind]:
+        # CSV quoting alone does not prevent spreadsheet formula execution.
+        values = []
+        for column in columns:
+            value = row[column]
+            if isinstance(value, str) and value.lstrip().startswith(('=', '+', '-', '@')):
+                value = "'" + value
+            values.append('' if value is None else value)
+        writer.writerow(values)
+    response = make_response('\ufeff' + output.getvalue())
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    response.headers['Content-Disposition'] = f'attachment; filename="paper-{kind}.csv"'
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
+
+
 @paper_preview_bp.before_request
 def require_preview():
     if not enabled():
