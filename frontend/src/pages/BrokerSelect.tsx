@@ -57,6 +57,7 @@ const allBrokers = [
 ] as const
 
 interface BrokerConfig {
+  paper_preview?: boolean
   flow_editing_preview?: boolean
   staging_restricted?: boolean
   per_user_credentials?: boolean
@@ -300,6 +301,11 @@ export default function BrokerSelect() {
               {brokerConfig?.flow_editing_preview && (
                 <Button asChild variant="outline" className="mb-4 w-full">
                   <a href="/flow">Open workflow editing preview</a>
+                </Button>
+              )}
+              {brokerConfig?.paper_preview && (
+                <Button asChild variant="outline" className="mb-4 w-full">
+                  <a href="/paper-preview/dashboard">Open paper dashboard</a>
                 </Button>
               )}
               <form onSubmit={handleSubmit} className="space-y-6">

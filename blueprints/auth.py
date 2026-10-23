@@ -127,12 +127,14 @@ def get_broker_config():
         from utils.account_access import current_account
         from utils.staging_mode import staging_safe
         from utils.flow_editing_preview import editing_preview_enabled
+        from utils.paper_preview import enabled as paper_preview_enabled
         if current_account() is None:
             return jsonify(status="error", message="Sign in first"), 401
         return jsonify(status="success", broker_name="groww", broker_api_key="",
                        redirect_url="", per_user_credentials=True,
                        credentials_configured=has_groww_credentials(session["user"]),
-                       staging_restricted=staging_safe(), flow_editing_preview=editing_preview_enabled())
+                       staging_restricted=staging_safe(), flow_editing_preview=editing_preview_enabled(),
+                       paper_preview=paper_preview_enabled())
 
     REDIRECT_URL = os.getenv("REDIRECT_URL")
 

@@ -1084,3 +1084,26 @@ No route is newly permitted and no rate limit is increased, reset or bypassed.
 Non-staging responses are unchanged. Tests exercise actual limiter rejection
 through the shipped app handler, hour-window timing, both response formats,
 blocked trading routes and unchanged non-staging behavior.
+
+### Account-owned paper dashboard
+
+`/paper-preview/dashboard` is a read-only server-rendered dashboard behind the
+existing restricted-paper-preview gates and known-account check. The broker
+configuration exposes a `paper_preview` capability so the staging broker page can
+link to it. Both simulation pages also link back to the dashboard.
+
+The dashboard reads only the session owner's sandbox funds, DXPAPER/DXBHEL NSE
+CNC positions and latest 50 matching orders. Available cash/margin cover the whole
+owner sandbox; preview realized P&L covers only the two preview instruments.
+Open position count counts instruments, not shares. Unfilled orders show no fill
+price. Empty accounts are not initialized by reading the page. `?format=json`
+returns the same bounded fields and ignores supplied owner/symbol parameters.
+Responses use `Cache-Control: no-store`.
+
+Groww status means only whether credentials have been stored for that account;
+keys are never decrypted and no connection success or live P&L is inferred. The
+page makes no broker requests, creates no sessions/orders, and starts no polling,
+WebSockets or background workers. Refresh is an ordinary GET. Groww simulation
+links appear only when that preview flag is enabled. Tests use real SQLite to
+check owner filtering, other-symbol exclusion, no mutations, empty accounts,
+latest-50 bounds, credential metadata, gated access and no network.

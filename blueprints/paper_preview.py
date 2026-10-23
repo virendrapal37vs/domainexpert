@@ -11,6 +11,17 @@ ROOT = Path(__file__).resolve().parents[1]
 paper_preview_bp = Blueprint('paper_preview', __name__, url_prefix='/paper-preview')
 
 
+@paper_preview_bp.get('/dashboard')
+@require_account
+def dashboard():
+    from services.paper_dashboard import dashboard_snapshot
+    data = dashboard_snapshot(current_account().username)
+    response = (jsonify(data) if request.args.get('format') == 'json'
+                else make_response(render_template('paper_dashboard.html', **data)))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @paper_preview_bp.before_request
 def require_preview():
     if not enabled():

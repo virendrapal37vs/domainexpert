@@ -4,6 +4,7 @@
 <body><main><a href="/broker">Back to account</a><h1>DomainXpert Trade · Paper Preview</h1>
 <p class="notice">Synthetic DXPAPER instrument only. BUY fills at ₹100; SELL fills at ₹110. These are fixed demo prices. No broker account or live market data is used.</p>
 <p>Signed in as <strong>{{ username }}</strong></p>
+<p><a href="{{ url_for('paper_preview.dashboard') }}">Paper dashboard</a></p>
 {% if groww_paper_available %}<p><a href="{{ url_for('paper_preview.groww_page') }}">Open paper simulation using Groww BHEL quotes</a></p>{% endif %}
 <dl><dt>DXPAPER position</dt><dd>{{ quantity }} shares</dd><dt>DXPAPER realized P&amp;L</dt><dd>₹{{ realized_pnl }}</dd><dt>Sandbox available cash</dt><dd>{{ available_cash if available_cash is not none else 'Created on first paper order' }}</dd><dt>Sandbox used margin</dt><dd>{{ used_margin if used_margin is not none else '—' }}</dd></dl>
 <form method="post" action="{{ url_for('paper_preview.order') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Quantity<br><input name="quantity" type="number" min="1" max="100" value="1" required></label><button name="action" value="BUY">Paper BUY at ₹100</button><button name="action" value="SELL">Paper SELL at ₹110</button></form>
