@@ -9,6 +9,9 @@ from test_paper_dashboard import signed_client
 
 @pytest.fixture
 def billing_app(main_app, monkeypatch):
+    # Exercise manual billing independently of the developer's staging .env.
+    # Gateway tests enable Razorpay explicitly and initialize its own tables.
+    monkeypatch.setenv('DOMAINXPERT_RAZORPAY_TEST', 'false')
     monkeypatch.setenv('DOMAINXPERT_MANUAL_SUBSCRIPTIONS', 'true')
     monkeypatch.setenv('DOMAINXPERT_STAGING_SAFE', 'true')
     sys.modules.pop('services.manual_subscription', None)
