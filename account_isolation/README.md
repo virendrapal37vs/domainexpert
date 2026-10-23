@@ -1113,3 +1113,8 @@ Signed-in staging accounts can download the latest 50 preview orders or the two 
 
 ### Paper form double-click protection
 Paper preview forms disable submit buttons while a native form submission is underway and preserve the selected BUY/SELL action. Further submit events on the same page are cancelled, including switching between quote and order forms. Browser back/forward restoration resets the controls. This browser guard does not provide server-side idempotency: separate tabs, disabled JavaScript, manual POST retries or refreshing a POST error response can still submit new orders. Check recent orders before retrying after a connection failure.
+
+### Durable paper order request protection
+Both staging paper order endpoints require a signed `request_token` from their authenticated GET page (also returned in `?format=json`). Tokens bind the account and fixed/Groww form, expire after one hour, and are atomically claimed in `staging_paper_request_claims` in the configured staging sandbox database before quote reads or OMS side effects. Repeating a claimed token returns 409; invalid/missing/foreign tokens return 400; unavailable claim storage returns 503. CSRF remains required. New forms receive new tokens.
+
+Claims are intentionally retained after failures or crashes, including stale quotes and rejected orders. Check recent orders before reloading for a new token. This prevents repeated execution of one request, not distinct orders from independently loaded forms/tabs; it does not guarantee an order was placed if a process crashes after claiming. No broker trading is enabled. The small claim table is created on first valid submission; preserve it with the sandbox database during backup/restore.

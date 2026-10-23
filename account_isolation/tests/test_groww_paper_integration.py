@@ -54,6 +54,17 @@ CSRFProtect(app); limiter.init_app(app); install_staging_gate(app)
 app.register_blueprint(bp.paper_preview_bp)
 app.add_url_rule('/csrf',endpoint='auth.get_csrf_token',view_func=lambda:jsonify(token=generate_csrf()))
 clients={name:app.test_client() for name in ('alice','bob')}
+for client in clients.values():
+    original_post = client.post
+    def guarded_post(url, *args, _client=client, _post=original_post, **kwargs):
+        if url.endswith('/order') and 'json' in kwargs:
+            page = url.rsplit('/order', 1)[0]
+            kwargs['json'] = dict(kwargs['json'], request_token=_client.get(page+'?format=json').json.get('request_token'))
+        if url.endswith('/order') and 'json' in kwargs:
+            _client.last_order_payload = kwargs['json'].copy()
+        return _post(url, *args, **kwargs)
+    client.raw_post = original_post
+    client.post = guarded_post
 headers={}
 for name,client in clients.items():
     with client.session_transaction() as session: session['user']=name
@@ -73,12 +84,18 @@ for name,qty in [('alice',3),('bob',7)]:
     assert response.json['orders'][0]['price']==400
 assert quotes==[credentials['alice'],credentials['bob']]
 assert db.SandboxOrders.query.filter_by(symbol='BHEL').count()==0
+before_replay=db.SandboxOrders.query.count()
+for name in ('alice','bob'):
+    replay=clients[name].raw_post('/paper-preview/groww/order',json=clients[name].last_order_payload,headers=headers[name])
+    assert replay.status_code==409,replay.json
+assert db.SandboxOrders.query.count()==before_replay
 bob=clients['bob'].get(url+'?format=json').json
+bob.pop('request_token', None)
 state['price']=420
 response=clients['alice'].post(url+'/order',json=dict(action='SELL',quantity=3),headers=headers['alice'])
 assert response.status_code==200,response.json
 assert response.json['quantity']==0 and response.json['realized_pnl']==60
-assert clients['bob'].get(url+'?format=json').json==bob
+assert {k:v for k,v in clients['bob'].get(url+'?format=json').json.items() if k != 'request_token'}==bob
 # Quote failures must not initialize funds or create even a rejected order.
 before=db.SandboxOrders.query.count()
 state['fail']=True
@@ -87,7 +104,7 @@ assert response.status_code==503,response.json
 assert db.SandboxOrders.query.count()==before
 state['fail']=False
 assert clients['alice'].post(url+'/order',json=dict(action='SELL',quantity=1),headers=headers['alice']).status_code>=400
-assert clients['bob'].get(url+'?format=json').json==bob
+assert {k:v for k,v in clients['bob'].get(url+'?format=json').json.items() if k != 'request_token'}==bob
 before=len(quotes)
 for qty in [0,101,True,1.5,'1e2','9'*5000]:
     assert clients['alice'].post(url+'/order',json=dict(action='BUY',quantity=qty),headers=headers['alice']).status_code==400

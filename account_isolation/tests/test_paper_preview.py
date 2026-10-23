@@ -73,6 +73,17 @@ app.register_blueprint(bp.paper_preview_bp)
 app.add_url_rule('/csrf',endpoint='auth.get_csrf_token',view_func=lambda:jsonify(token=generate_csrf()))
 app.add_url_rule('/trade',endpoint='orders.place',view_func=forbidden,methods=['POST'])
 clients={name:app.test_client() for name in ('alice','bob')}
+for client in clients.values():
+    original_post = client.post
+    def guarded_post(url, *args, _client=client, _post=original_post, **kwargs):
+        if url.endswith('/order') and 'json' in kwargs:
+            page = url.rsplit('/order', 1)[0]
+            kwargs['json'] = dict(kwargs['json'], request_token=_client.get(page+'?format=json').json.get('request_token'))
+        if url.endswith('/order') and 'json' in kwargs:
+            _client.last_order_payload = kwargs['json'].copy()
+        return _post(url, *args, **kwargs)
+    client.raw_post = original_post
+    client.post = guarded_post
 headers={}
 for name,client in clients.items():
     with client.session_transaction() as session: session['user']=name
@@ -90,19 +101,25 @@ for name,qty in [('alice',3),('bob',7)]:
     assert response.json['used_margin']==qty*100
     assert all(row['price']==100 for row in response.json['orders'])
     assert clients[name].get('/paper-preview').status_code==200
+before_replay=db.SandboxOrders.query.count()
+for name in ('alice','bob'):
+    replay=clients[name].raw_post('/paper-preview/order',json=clients[name].last_order_payload,headers=headers[name])
+    assert replay.status_code==409,replay.json
+assert db.SandboxOrders.query.count()==before_replay
 bob_before=clients['bob'].get('/paper-preview?format=json').json
+bob_before.pop('request_token', None)
 response=clients['alice'].post('/paper-preview/order',json={'action':'SELL','quantity':3},headers=headers['alice'])
 assert response.status_code==200,response.json
 assert response.json['quantity']==0 and response.json['realized_pnl']==30
 assert response.json['used_margin']==0
-assert clients['bob'].get('/paper-preview?format=json').json==bob_before
+assert {k:v for k,v in clients['bob'].get('/paper-preview?format=json').json.items() if k != 'request_token'}==bob_before
 assert db.SandboxOrders.query.filter_by(symbol='DXPAPER').count()==3
 assert db.SandboxTrades.query.count()==3
 assert event_calls==[],event_calls
 # Overselling cannot consume Bob's shares.
 response=clients['alice'].post('/paper-preview/order',json={'action':'SELL','quantity':1},headers=headers['alice'])
 assert response.status_code>=400,response.json
-assert clients['bob'].get('/paper-preview?format=json').json==bob_before
+assert {k:v for k,v in clients['bob'].get('/paper-preview?format=json').json.items() if k != 'request_token'}==bob_before
 for qty in [0,101,1.5,True,'1e2']:
     assert clients['alice'].post('/paper-preview/order',json={'action':'BUY','quantity':qty},headers=headers['alice']).status_code==400
 os.environ['DOMAINXPERT_PAPER_PREVIEW']='false'

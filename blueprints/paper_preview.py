@@ -63,14 +63,21 @@ def require_preview():
     validate_staging_config(ROOT)
 
 
+@paper_preview_bp.after_request
+def private_preview_response(response):
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 def snapshot(owner, symbol=SYMBOL):
+    from services.paper_request_guard import issue_token
     from database.sandbox_db import SandboxOrders, SandboxPositions, SandboxFunds
     funds = SandboxFunds.query.filter_by(user_id=owner).populate_existing().first()
     position = SandboxPositions.query.filter_by(user_id=owner, symbol=symbol,
                                                exchange='NSE', product='CNC').populate_existing().first()
     orders = SandboxOrders.query.filter_by(user_id=owner, symbol=symbol, exchange='NSE',
                                           product='CNC').order_by(SandboxOrders.id.desc()).limit(25).all()
-    return dict(username=owner, quantity=position.quantity if position else 0,
+    return dict(request_token=issue_token(owner, 'groww' if symbol == GROWW_PAPER_SYMBOL else 'fixed'), username=owner, quantity=position.quantity if position else 0,
                 realized_pnl=float(position.accumulated_realized_pnl or 0) if position else 0,
                 available_cash=float(funds.available_balance) if funds else None,
                 used_margin=float(funds.used_margin) if funds else None,
@@ -82,9 +89,10 @@ def snapshot(owner, symbol=SYMBOL):
 @require_account
 def page():
     data = snapshot(current_account().username)
-    if request.args.get('format') == 'json':
-        return jsonify(data)
-    return render_template('paper_preview.html', groww_paper_available=groww_enabled(), **data)
+    response = (jsonify(data) if request.args.get('format') == 'json' else
+                make_response(render_template('paper_preview.html', groww_paper_available=groww_enabled(), **data)))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 def groww_screen(quote=None, error=None, status=200):
@@ -130,6 +138,10 @@ def groww_order():
     raw = str(payload.get('quantity', ''))
     if not raw.isascii() or not raw.isdecimal() or len(raw) > 3 or not 1 <= int(raw) <= 100:
         return groww_screen(error='Quantity must be a whole number from 1 to 100', status=400)
+    from services.paper_request_guard import claim_request
+    rejected = claim_request(payload.get('request_token'), current_account().username, 'groww')
+    if rejected:
+        return jsonify(error=rejected[0]), rejected[1]
     # Fetch anew for each order; caller price, timestamp, symbol and owner are ignored.
     quote, error = own_paper_quote()
     if error:
@@ -167,6 +179,10 @@ def order():
     except ValueError:
         return jsonify(error='Quantity must be a whole number from 1 to 100'), 400
     owner = current_account().username
+    from services.paper_request_guard import claim_request
+    rejected = claim_request(payload.get('request_token'), owner, 'fixed')
+    if rejected:
+        return jsonify(error=rejected[0]), rejected[1]
     # Body identity/symbol/price fields never control this paper-only path.
     action = payload['action']
     price = 100 if action == 'BUY' else 110
