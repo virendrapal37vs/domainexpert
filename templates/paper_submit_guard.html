@@ -1,0 +1,52 @@
+<script>
+(() => {
+  const forms = document.querySelectorAll('form[data-submit-once]');
+  let submitting = false;
+  const reset = () => {
+    submitting = false;
+    forms.forEach(form => {
+      form.removeAttribute('aria-busy');
+      form.querySelectorAll('[data-submit-guard-value]').forEach(input => input.remove());
+      form.querySelectorAll('[data-submit-guard-disabled]').forEach(button => {
+        button.disabled = false;
+        button.removeAttribute('data-submit-guard-disabled');
+      });
+      const status = form.querySelector('[data-submit-guard-status]');
+      if (status) status.remove();
+    });
+  };
+  forms.forEach(form => form.addEventListener('submit', event => {
+    if (submitting) {
+      event.preventDefault();
+      return;
+    }
+    if (event.defaultPrevented) return;
+    // Disabled submit buttons are omitted by native form serialization.
+    // Preserve the clicked BUY/SELL value before disabling the buttons.
+    const button = event.submitter;
+    if (button && button.name) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = button.name;
+      input.value = button.value;
+      input.setAttribute('data-submit-guard-value', '');
+      form.append(input);
+    }
+    submitting = true;
+    form.setAttribute('aria-busy', 'true');
+    forms.forEach(item => item.querySelectorAll('button').forEach(control => {
+      if (!control.disabled) {
+        control.setAttribute('data-submit-guard-disabled', '');
+        control.disabled = true;
+      }
+    }));
+    const status = document.createElement('p');
+    status.setAttribute('data-submit-guard-status', '');
+    status.setAttribute('role', 'status');
+    status.textContent = 'Submitting… Please wait. Check your recent orders before trying again.';
+    form.append(status);
+  }));
+  // Restore controls when returning via the browser back/forward cache.
+  window.addEventListener('pageshow', reset);
+})();
+</script>

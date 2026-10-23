@@ -7,7 +7,7 @@
 <p><a href="{{ url_for('paper_preview.dashboard') }}">Paper dashboard</a></p>
 {% if groww_paper_available %}<p><a href="{{ url_for('paper_preview.groww_page') }}">Open paper simulation using Groww BHEL quotes</a></p>{% endif %}
 <dl><dt>DXPAPER position</dt><dd>{{ quantity }} shares</dd><dt>DXPAPER realized P&amp;L</dt><dd>₹{{ realized_pnl }}</dd><dt>Sandbox available cash</dt><dd>{{ available_cash if available_cash is not none else 'Created on first paper order' }}</dd><dt>Sandbox used margin</dt><dd>{{ used_margin if used_margin is not none else '—' }}</dd></dl>
-<form method="post" action="{{ url_for('paper_preview.order') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Quantity<br><input name="quantity" type="number" min="1" max="100" value="1" required></label><button name="action" value="BUY">Paper BUY at ₹100</button><button name="action" value="SELL">Paper SELL at ₹110</button></form>
+<form data-submit-once method="post" action="{{ url_for('paper_preview.order') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Quantity<br><input name="quantity" type="number" min="1" max="100" value="1" required></label><button name="action" value="BUY">Paper BUY at ₹100</button><button name="action" value="SELL">Paper SELL at ₹110</button></form>
 <p>SELL requires your own available shares. Balances belong to the staging sandbox. Only your latest 25 DXPAPER orders appear below.</p>
 <div class="scroll"><table><thead><tr><th>Order</th><th>Action</th><th>Quantity</th><th>Status</th><th>Fill price</th></tr></thead><tbody>{% for order in orders %}<tr><td>{{ order.orderid }}</td><td>{{ order.action }}</td><td>{{ order.quantity }}</td><td>{{ order.status }}</td><td>₹{{ order.price }}</td></tr>{% else %}<tr><td colspan="5">No paper preview orders yet.</td></tr>{% endfor %}</tbody></table></div>
-</main></body></html>
+</main>{% include 'paper_submit_guard.html' %}</body></html>
